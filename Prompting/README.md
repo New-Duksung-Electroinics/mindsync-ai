@@ -1,0 +1,1 @@
+MindSync의 AI 솔루션을 상업용/오픈소스 LLM API 활용 프롬프팅으로 구축하는 Repo

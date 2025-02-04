@@ -1,0 +1,9 @@
+# JSON 데이터셋 디렉토리
+original
+processed
+
+# token 임시 파일
+/token.txt
+
+# 코드 스니펫 테스트용 파일
+/test*.py

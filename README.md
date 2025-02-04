@@ -1,0 +1,1 @@
+MindSync의 AI 솔루션 개발 Repo
