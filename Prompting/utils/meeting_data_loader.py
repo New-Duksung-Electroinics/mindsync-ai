@@ -57,6 +57,14 @@ class MeetingDataLoader:
                 result.append(name)
         return result
 
+    def process_prev_chat_history_for_prompt(self):
+        prev_content = self.contents[-1]    # 직전에 논의한 안건
+        step = prev_content.get('step', 0)  # 안건 번호
+        sub_topic = prev_content.get('sub_topic', '')  # 안건 제목
+        chat_list = prev_content.get('utterance', [])  # 발언 목록
+        chat_string = self._process_sub_topic_chat(step, sub_topic, chat_list)  # 안건별 발언 문자열 생성
+        return chat_string
+
     def process_chat_history_for_prompt(self, count_tokens_callback=None, token_alloc=None):
         """
         Gemini API 프롬프트 생성을 위한 텍스트를 구성. 토큰 수 제한을 고려하여 텍스트를 분할 가능(분할 단위는 안건별로)
@@ -125,7 +133,7 @@ class MeetingDataLoader:
         :return: (안건에 대한) 발언 내역 문자열
         """
         lines = []
-        sub_topic_str = f"{step}. {sub_topic}"  # 안건 제목 문자열
+        sub_topic_str = f"안건 {step}. {sub_topic}"  # 안건 제목 문자열
         lines.append(sub_topic_str)
         for chat in chat_list:
             speaker_id = chat.get('speaker_id', '')  # 발언자 ID
