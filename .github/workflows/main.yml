@@ -21,7 +21,6 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Build Docker Image
-          working-directory: ./Prompting
           run: docker build -t ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting .
 
       - name: Push Docker Image to Docker Hub
