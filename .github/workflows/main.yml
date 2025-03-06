@@ -28,7 +28,6 @@ jobs:
       
   deploy-to-ubuntu-server:
     name: Deploy to EC2
-    needs: build-push-docker
     runs-on: ubuntu-latest
   
     steps:
