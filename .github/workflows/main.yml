@@ -80,5 +80,5 @@ jobs:
 
             # Docker 이미지 업데이트 및 컨테이너 실행
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker pull ${{ env.DOCKER_IMAGE_NAME }}:latest
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-ai-container -d -p 20:8080 -e TZ=Asia/Seoul \
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-ai-container -d -p 20:8000 -e TZ=Asia/Seoul \
               -v $LOG_DIR/app.log:/app/logs/app.log ${{ env.DOCKER_IMAGE_NAME }}:latest
