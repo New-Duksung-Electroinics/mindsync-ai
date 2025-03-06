@@ -5,6 +5,12 @@ on:
     branches:
       - main  # main 브랜치에 push될 때 실행
 
+env:
+  DOCKER_IMAGE_NAME: kanepark/app
+  SERVER_HOST: 211.47.114.99
+  SERVER_SSH_USER: parkhaein
+  PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
 jobs:
   build-and-push:
     name: Build and Push Docker Image
