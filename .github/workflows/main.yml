@@ -25,26 +25,55 @@ jobs:
 
       - name: Push Docker Image to Docker Hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting
-
-  deploy:
+      
+  deploy-to-ubuntu-server:
     name: Deploy to EC2
-    needs: build-and-push
+    needs: build-push-docker
     runs-on: ubuntu-latest
-
+  
     steps:
-      - name: Deploy on EC2
+      - name: Deploy to Ubuntu Server
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 234
           script: |
-            # 기존 컨테이너 중지 및 삭제
-            docker stop fastapi-container || true
-            docker rm fastapi-container || true
+            LOG_DIR="/home/ubuntu/app-logs"
+            mkdir -p $LOG_DIR
+            touch $LOG_DIR/app.log
+  
+            # sudo 명령어에 비밀번호 자동 입력
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker container prune -f
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker image prune -af
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker volume prune -f
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker system prune -af --volumes
+  
+            # 기존 컨테이너 종료 (종료를 기다림)
+            CONTAINER_ID=$(sudo docker ps -q --filter "publish=20")
 
-            # 최신 이미지 가져오기
-            docker pull ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting
+            if [ ! -z "$CONTAINER_ID" ]; then
+              echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker stop $CONTAINER_ID
+              echo "컨테이너 종료 대기 중..."
+              
+              # 컨테이너 종료 상태를 기다림
+              while true; do
+                # 컨테이너 상태 확인
+                CONTAINER_STATUS=$(sudo docker inspect --format '{{.State.Status}}' $CONTAINER_ID)
+                
+                # 종료된 상태이면 루프 종료
+                if [ "$CONTAINER_STATUS" == "exited" ]; then
+                  echo "컨테이너 종료 완료"
+                  break
+                fi
+                
+                # 1초 대기 후 다시 확인
+                sleep 1
+              done
+            fi
 
-            # 새 컨테이너 실행
-            docker run -d -p 7070:8000 --name fastapi-container ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting
+            # Docker 이미지 업데이트 및 컨테이너 실행
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker pull ${{ env.DOCKER_IMAGE_NAME }}:latest
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-be-container -d -p 20:8080 -e TZ=Asia/Seoul \
+              -v $LOG_DIR/app.log:/app/logs/app.log ${{ env.DOCKER_IMAGE_NAME }}:latest
