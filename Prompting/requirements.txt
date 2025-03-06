@@ -1,2 +1,6 @@
-fastapi
+fastapi>=0.115.11
 uvicorn[standard]
+Prompting>=0.1.0
+protobuf>=6.30.0
+pymongo>=4.11.2
+python-dotenv>=1.0.1
