@@ -27,7 +27,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Build Docker Image  # Gemini API Key 전달하여 빌드
-        run: docker build --build-arg XXX_API_KEY=${{ secrets.GEMINI_API_KEY }} -t ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting .
+        run: docker build --build-arg GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} -t ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting .
 
       - name: Push Docker Image to Docker Hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting
