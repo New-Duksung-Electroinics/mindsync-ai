@@ -9,6 +9,7 @@ COPY .env.template /app/.env
 
 # 4. .env 파일을 수정하여 환경변수 적용
 ARG GEMINI_API_KEY
+ENV GEMINI_API_KEY=${GEMINI_API_KEY}
 RUN sed -i "s|REPLACE_WITH_SECRET|${GEMINI_API_KEY}|g" /app/.env
 
 # 5. 의존성 파일 복사 및 설치
