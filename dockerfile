@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./Prompting /app/Prompting
 
 # 7. Uvicorn 실행 (reload 포함)
-CMD ["uvicorn", "Prompting.main:app", "--reload"]
+CMD ["uvicorn", "Prompting.main:app", "--host", "0.0.0.0", "--port", "8000"]
