@@ -45,7 +45,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 234
           script: |
+            APP_DIR="/home/ubuntu/app"
             LOG_DIR="/home/ubuntu/app-logs"
+            mkdir -p $APP_DIR
             mkdir -p $LOG_DIR
             touch $LOG_DIR/app.log
   
@@ -55,13 +57,21 @@ jobs:
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker volume prune -f
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker system prune -af --volumes
             
-            cd /home/ubuntu/app
+            cd $APP_DIR || exit 1
+            
+            # .env.template 파일 존재 여부 확인
+            if [ ! -f ".env.template" ]; then
+              echo ".env.template DOES NOT EXIST"
+              exit 1
+            fi
             
             # .env.template을 .env로 변환
+            echo "Create .env file to set API Key Value"
             cp .env.template .env
             sed -i "s|REPLACE_WITH_SECRET|${{ secrets.GEMINI_API_KEY }}|g" .env
 
             # .env 파일이 정상적으로 만들어졌는지 확인
+            echo "Print .env contents for debugging..."
             cat .env
   
             # 기존 컨테이너 종료 (종료를 기다림)
