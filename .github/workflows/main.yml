@@ -54,6 +54,15 @@ jobs:
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker image prune -af
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker volume prune -f
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker system prune -af --volumes
+            
+            cd /home/ubuntu/app
+            
+            # .env.template을 .env로 변환
+            cp .env.template .env
+            sed -i "s|REPLACE_WITH_SECRET|${{ secrets.GEMINI_API_KEY }}|g" .env
+
+            # .env 파일이 정상적으로 만들어졌는지 확인
+            cat .env
   
             # 기존 컨테이너 종료 (종료를 기다림)
             CONTAINER_ID=$(sudo docker ps -q --filter "publish=20")
@@ -78,7 +87,8 @@ jobs:
               done
             fi
 
-            # Docker 이미지 업데이트 및 컨테이너 실행
+            # Docker 이미지 업데이트 및 컨테이너 실행(.env 파일 적용해 실행)
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker pull ${{ env.DOCKER_IMAGE_NAME }}:latest
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-ai-container -d -p 20:8000 -e TZ=Asia/Seoul \
+              --env-file /home/ubuntu/app/.env \
               -v $LOG_DIR/app.log:/app/logs/app.log ${{ env.DOCKER_IMAGE_NAME }}:latest

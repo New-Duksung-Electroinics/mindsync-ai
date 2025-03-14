@@ -4,13 +4,8 @@ FROM python:3.9
 # 2. 작업 디렉토리 설정
 WORKDIR /app
 
-# 3. .env.template을 컨테이너 내부로 복사해 .env 생성
-COPY .env.template /app/.env
-
-# 4. .env 파일을 수정하여 환경변수 적용
-ARG GEMINI_API_KEY
-ENV GEMINI_API_KEY=${GEMINI_API_KEY}
-RUN sed -i "s|REPLACE_WITH_SECRET|${GEMINI_API_KEY}|g" /app/.env
+# 3. .env.template을 컨테이너 내부로 복사 (EC2에서 이 파일을 수정해 직접 .env 생성)
+COPY .env.template /app/.env.template
 
 # 5. 의존성 파일 복사 및 설치
 COPY ./Prompting/requirements.txt .
