@@ -26,8 +26,13 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Build Docker Image  # Gemini API Key 전달하여 빌드
-        run: docker build --build-arg GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} -t ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting .
+      - name: Ensure .env.template Exists Before Docker Build
+        run: |
+          ls -al
+          cp .env.template ./  # 필요하면 복사
+
+      - name: Build Docker Image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting .
 
       - name: Push Docker Image to Docker Hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting
