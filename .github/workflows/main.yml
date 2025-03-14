@@ -90,7 +90,7 @@ jobs:
                 cp /app/.env.template /app/.env &&
                 sed -i 's|REPLACE_WITH_SECRET|${{ secrets.GEMINI_API_KEY }}|g' /app/.env &&
                 chmod 400 /app/.env &&  # 보안 강화를 위해 읽기 전용
-                exec uvicorn Prompting.main:app --reload
+                exec uvicorn Prompting.main:app --host 0.0.0.0 --port 8000 --reload
               "
 
             # 배포 후 컨테이너 로그 출력
