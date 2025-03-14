@@ -92,3 +92,13 @@ jobs:
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-ai-container -d -p 20:8000 -e TZ=Asia/Seoul \
               --env-file /home/ubuntu/app/.env \
               -v $LOG_DIR/app.log:/app/logs/app.log ${{ env.DOCKER_IMAGE_NAME }}:latest
+
+            # 배포 후 컨테이너 로그 출력
+            sleep 3  # 컨테이너가 완전히 실행될 때까지 대기
+            echo "Start printing container logs..."
+            CONTAINER_ID=$(sudo docker ps -q --filter "name=mindsync-ai-container")
+            if [ ! -z "$CONTAINER_ID" ]; then
+              echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker logs $CONTAINER_ID
+            else
+              echo "NO CONTAINER is running"
+            fi
