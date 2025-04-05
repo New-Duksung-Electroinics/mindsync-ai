@@ -5,16 +5,20 @@ JSON 형식의 MBTI 유형별 정보를 로드하고, 주어진 MBTI 유형에 �
 Gemini API 프롬프트 생성을 위한 MBTI 관련 정보를 구성하는데 활용하는 것이 목적.
 """
 import json
+import os
 
-
-class MbtiInstructor():
-    def __init__(self, instruction_file_path):
+class MbtiInstructor:
+    def __init__(self, instruction_file_path=None):
         """
         MbtiInstructor 클래스 생성자.
         JSON 파일에서 MBTI 유형별 정보를 로드하여 내부 데이터 구조에 저장.
 
         :param instruction_file_path: MBTI 정보가 담긴 JSON 파일의 경로, str
         """
+        if not instruction_file_path:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            instruction_file_path = os.path.join(base_dir, "./mbti_type_instructions.json")
+
         with open(instruction_file_path, 'r', encoding="utf-8") as f:  # MBTI 정보가 담긴 JSON 파일 읽기
             file_string = f.read()  # 파일 내용 읽기
         self.data = json.loads(file_string)  # JSON 문자열 파싱하여 데이터 로드
