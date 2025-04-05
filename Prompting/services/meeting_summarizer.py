@@ -130,3 +130,28 @@ class MeetingSummarizer:
             result += r.parsed  # 응답 결과 병합
         return result
 
+    def parse_response_to_summary_data(self, response):
+        summary_list = []
+        for data in response:
+            step = data.get("step", -1)
+            sub_topic = data.get("sub_topic", '')
+            conclusion = data.get("conclusion", '')
+            highlights = data.get("summary", '').split('\n')
+            indented_highlights = ''
+            for h in highlights:
+                indented_highlights += '\t' + h + '\n'
+
+            title = f"{step}. {sub_topic}\n\n"
+            highlight_text = "주요 발언:\n" + indented_highlights
+            conclusion_text = "결론:\n" + '\t' + conclusion
+
+            summary_content = highlight_text + conclusion_text
+            agenda_summary = {
+                "agendaId": step,
+                "topic": sub_topic,
+                "content": summary_content
+            }
+
+            summary_list.append(agenda_summary)
+
+        return summary_list
