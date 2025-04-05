@@ -1,7 +1,7 @@
 """
 회의 채팅 기록을 로드하고 처리하는 클래스
 
-JSON 형식의 회의 채팅 기록을 파싱하여 회의 주제, 발언자 정보, 안건별 발언 내역 등을 관리
+DB에서 불러온 회의 데이터를 받아 회의 주제, 발언자 정보, 안건별 발언 내역 등을 관리
 주요 기능:
     - Gemini API 프롬프트 첨부용 채팅 내역 텍스트 구성
     - 토큰 수 제한에 맞춰 텍스트를 분할
@@ -9,20 +9,38 @@ JSON 형식의 회의 채팅 기록을 파싱하여 회의 주제, 발언자 정
 import json
 from collections import Counter
 import itertools
+import re
 
 
 class MeetingDataLoader:
-    def __init__(self, json_string):
+    def __init__(self, topic: str, agendas: list, host: str, participants: list, chat_logs: list):
         """
         MeetingDataLoader 클래스 생성자
-
-        :param json_string: JSON 형식의 회의 채팅 데이터 문자열
         """
-        data = json.loads(json_string)              # JSON 문자열 파싱
-        self.topic = data.get('topic', '')          # 회의 주제
-        speakers = data.get('speakers', [])         # 발언자 목록
-        self.contents = data.get('contents', [])    # 안건별 발언 내용
-        self.speaker_id_to_name = self._generate_speaker_name_map(speakers)  # 발언자 ID-이름 매핑 생성
+        self.topic = topic          # 회의 주제
+        self.agendas = agendas      # 회의 안건들(번호-주제 쌍)
+        self.host = host            # 회의 개최자(이메일)
+        self.contents = chat_logs   # 안건별 발언 내용
+        self.speaker_id_to_name = self._generate_speaker_name_map(participants)  # 발언자 ID-이름 매핑 생성
+        self.ai_mbti = self.find_ai_name(participants)
+
+
+    def find_ai_name(self, participants):
+        """
+        이메일 주소에서 @ai.com 패턴을 가진 AI 봇을 검사하여 이름 반환(MBTI)
+        """
+        pattern = r".*@ai\.com"  # @ai.com 패턴
+        ai_name = ''
+        for p in participants:
+            email = p.get("email", '')
+            if re.search(pattern, email):
+                ai_name = p.get("name", '')
+                break
+        if ai_name != '':
+            return ai_name
+        else:
+            return None
+
 
     def _generate_speaker_name_map(self, speakers):
         """
@@ -33,7 +51,7 @@ class MeetingDataLoader:
         """
         org_id_to_name = {}
         for s in speakers:
-            org_id_to_name[s.get('id', 0)] = s.get('name', '')  # ID-이름 매핑(동명이인 구분되지 않은 원본)
+            org_id_to_name[s.get('email', 0)] = s.get('name', '')  # ID-이름 매핑(동명이인 구분되지 않은 원본)
         names = org_id_to_name.values()  # 이름 목록 추출
         counters = {name: itertools.count() for name in names}  # 동명이인 확인을 위한 카운터
         identified_names = self._append_name_identifier(names, counters)  # 동명이인 알파벳 식별자 추가
@@ -56,14 +74,6 @@ class MeetingDataLoader:
             else:  # 동명이인이 없으면
                 result.append(name)
         return result
-
-    def process_prev_chat_history_for_prompt(self):
-        prev_content = self.contents[-1]    # 직전에 논의한 안건
-        step = prev_content.get('step', 0)  # 안건 번호
-        sub_topic = prev_content.get('sub_topic', '')  # 안건 제목
-        chat_list = prev_content.get('utterance', [])  # 발언 목록
-        chat_string = self._process_sub_topic_chat(step, sub_topic, chat_list)  # 안건별 발언 문자열 생성
-        return chat_string
 
     def process_chat_history_for_prompt(self, count_tokens_callback=None, token_alloc=None):
         """
@@ -110,36 +120,32 @@ class MeetingDataLoader:
 
     def _get_sub_topic_chat_list(self):
         """
-        안건별 발언 목록 생성. 반복문으로 각 안건의 발언 내용을 문자열로 구성하여 리스트로 병합.
-
-        :return: 안건별 발언 목록, list
+        안건별 발언 목록 생성.
         """
-        chat_string_list = []
-        for content in self.contents:
-            step = content.get('step', 0)  # 안건 번호
-            sub_topic = content.get('sub_topic', '')  # 안건 제목
-            chat_list = content.get('utterance', [])  # 발언 목록
-            chat_string = self._process_sub_topic_chat(step, sub_topic, chat_list)  # 안건별 발언 문자열 생성
-            chat_string_list.append(chat_string)
-        return chat_string_list
+        lines = {}
+        for chat in self.contents:
+            agenda_id = chat.get('agenda_id', -1)  # 안건 번호
+            if agenda_id not in lines:
+                sub_topic = self.agendas.get(agenda_id, '')  # 안건 제목
+                sub_topic_str = f"안건 {agenda_id}. {sub_topic}"  # 안건 제목 문자열
+                lines[agenda_id] = [sub_topic_str]
 
-    def _process_sub_topic_chat(self, step, sub_topic, chat_list):
-        """
-        단일 안건의 발언 내용을 문자열로 구성
+            speaker_id = chat.get('email', '')  # 발언자 ID
+            msg = chat.get('message', '')  # 발언 내용
 
-        :param step: 안건 번호, int
-        :param sub_topic: 안건 제목, str
-        :param chat_list: 발언 목록, str
-        :return: (안건에 대한) 발언 내역 문자열
-        """
-        lines = []
-        sub_topic_str = f"안건 {step}. {sub_topic}"  # 안건 제목 문자열
-        lines.append(sub_topic_str)
-        for chat in chat_list:
-            speaker_id = chat.get('speaker_id', '')  # 발언자 ID
-            is_moderator = chat.get('is_speaker_moderator', False)  # 진행자 여부
-            msg = chat.get('msg', '')  # 발언 내용
-            speaker_name_str = self.speaker_id_to_name[speaker_id] + ("(진행자)" if is_moderator else "")  # 발언자 이름 (진행자 표기 포함)
+            if self.host == speaker_id:  # 진행자 여부
+                speaker_role = "(진행자)"
+            elif speaker_id == f"{str(self.ai_mbti).lower()}@ai.com":  # ai 여부
+                speaker_role = "(YOU)"
+            else:
+                speaker_role = ""
+            speaker_name_str = self.speaker_id_to_name[speaker_id] + speaker_role  # 발언자 이름 (진행자 표기 포함)
             chat_str = f"{speaker_name_str}: {msg}"  # 발언 문자열
-            lines.append(chat_str)
-        return '\n'.join(lines)  # 발언 문자열 병합
+            lines[agenda_id].append(chat_str)
+
+        chat_string_list = []
+        for agenda_id in lines:
+            sub_topic_chat = '\n'.join(lines[agenda_id])
+            chat_string_list.append(sub_topic_chat)
+
+        return chat_string_list
