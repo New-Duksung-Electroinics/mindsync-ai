@@ -3,44 +3,32 @@ Gemini API를 사용하여 MBTI 성향이 반영된 가상 참여자의 채팅�
 
 회의 주제, 직전 안건에 대한 논의 내용, 넘어가고자 하는 안건에 대한 정보를 바탕으로 MBTI 성향 정보를 반영해 채팅 생성.
 """
-from .gemini_client import GeminiClient
+from .GeminiClient import GeminiClient
 from google.genai import types
-from Prompting.utils.mbti_instructor import MbtiInstructor
+from Prompting.utils.MbtiInstructor import MbtiInstructor
 
 prompt_kor_template = \
     """
 너는 MBTI 성격유형에서 {mbti} 성향을 가진 회의 참여자야. {topic}에 대한 회의를 진행 중이고, 
-이제 {step}번째 안건인 {sub_topic}에 대해 논의를 시작하려고 해.
-모두의 회의 참여를 잘 독려하고 원활한 회의 진행을 위한 회의 참여자로서의 채팅을 {hangul_length_limit}자 내로 작성해줘. 
+'{sub_topic}' 안건에 대해 논의를 시작하려고 해.
+모두의 회의 참여를 '자연스럽게' 독려하고 목적에 맞는 원활한 진행을 위해서 참여자로서 발언하고 싶은 내용을 {hangul_length_limit}자 내로 작성해줘. 
 마크다운 서식은 절대 사용하지 말고.
-네가 회의의 맥락을 더 이해할 수 있게 바로 직전에 논의했던 안건에 대한 채팅 내역 전문과 {mbti} 성향의 특징에 대한 자료를 함께 제공해줄게.
 
-Your personality info:
+네가 가져야 할 {mbti} 성향에 대한 참고 자료:
 {mbti_info}
-
-Previous chat history: {prev_chat_history}
 """
 
-prompt_eng_template = \
-    """
-You're a meeting participant with the MBTI personality type {mbti}.
-You're in a meeting about {topic}, 
-and you're about to start discussing the {step}th agenda item, {sub_topic}.
-To keep everyone engaged and the meeting running smoothly, please write a chat as a meeting participant in Korean in 300 characters or less. 
-Never use markdown formatting.
-To help you understand the context of the meeting, 
- I'll provide you with the full chat transcript of the agenda item we just discussed, as well as a resource on {mbti} personality traits.
-
-Your personality traits:
-{mbti_info}
-
+context_kor_template = \
+"""
+반드시 바로 직전에 논의했던 안건에 대한 이 채팅 내역을 참고해서 흐름에 맞게 발언해야 해.
+그리고 다른 참여자들의 발언 분위기와 자연스럽게 어울리는 말투를 사용해. 
+네 성향을 감안하되, 차분하거나 활발한 정도 등 발언을 회의 분위기와 어울리는 수준으로 조정해.
 Previous chat history: 
 {prev_chat_history}
 """
 
-
 class MbtiChatGenerator():
-    def __init__(self, mbti_instruction_file_path, temperature=1.5, top_p=0.95, top_k=40, max_output_tokens=8192):
+    def __init__(self, mbti_instruction_file_path=None, temperature=1.5, top_p=0.95, top_k=40, max_output_tokens=8192):
         """
         MeetingSummarizer 클래스 생성자
 
@@ -52,6 +40,7 @@ class MbtiChatGenerator():
         """
         self.client = GeminiClient()  # Gemini API 클라이언트 초기화
         self.template = prompt_kor_template  # 회의록 생성을 위한 프롬프트 템플릿
+        self.context_template = context_kor_template  # 이전 채팅 내역 첨부를 위한 템플릿
 
         # 모델 config 값 설정
         self.temperature = temperature
@@ -59,15 +48,18 @@ class MbtiChatGenerator():
         self.top_k = top_k
         self.max_output_tokens = max_output_tokens
 
-        self.mbtiInstructor = MbtiInstructor(mbti_instruction_file_path)  # MBTI 성향 정보 데이터를 제공하는 객체
+        # MBTI 성향 정보 데이터를 제공하는 객체
+        self.mbtiInstructor = MbtiInstructor(mbti_instruction_file_path) if mbti_instruction_file_path \
+            else MbtiInstructor()
 
-    def _generate_prompt(self, mbti, topic, step, sub_topic, prev_chat_history, hangul_length_limit=500):
+
+    def _generate_prompt(self, mbti, topic, step, sub_topic, prev_chat_history, hangul_length_limit=300):
         """
         프롬프트 템플릿에 필요한 요소를 삽입하여 최종 프롬프트를 생성
 
         :param mbti: 챗봇의 mbti 성향, str
         :param topic: 회의 주제, str
-        :param step: 현재 시작되는 안건의 순서, int
+        :param step: 현재 시작되는 안건의 순서, str
         :param sub_topic: 현재 시작되는 안건명, str
         :param prev_chat_history: 직전 안건의 내역, str
         :param hangul_length_limit: 챗봇이 생성할 채팅의 길이 제한값(한글 n자), int
@@ -77,15 +69,20 @@ class MbtiChatGenerator():
         prompt = self.template.format(
             mbti=mbti,
             topic=topic,
-            step=step,
             sub_topic=sub_topic,
-            prev_chat_history=prev_chat_history,
             hangul_length_limit=hangul_length_limit,
             mbti_info=self.mbtiInstructor.process_mbti_info_for_prompt(mbti),
         )
+
+        if int(step) > 1:  # 첫 안건이 아니면, 직전 안건 대화 context를 함께 전달
+            context = self.context_template.format(
+                prev_chat_history=prev_chat_history
+            )
+            prompt += '\n' + context
+
         return prompt
 
-    async def generate_chat(self, dataloader, mbti, step, sub_topic):
+    async def generate_chat(self, dataloader, mbti, step):
         """
         Gemini API를 사용하여 MBTI 성향 봇의 채팅을 생성
 
@@ -97,7 +94,8 @@ class MbtiChatGenerator():
         """
         # 채팅 내역 텍스트를 목록으로 준비(토큰 수 제한 고려해 필요 시 분할 처리)
         topic = dataloader.topic
-        prev_chat_history = dataloader.process_prev_chat_history_for_prompt()
+        prev_chat_history = dataloader.process_chat_history_for_prompt()
+        sub_topic = dataloader.agendas.get(step, '')
         prompt = self._generate_prompt(mbti, topic, step, sub_topic, prev_chat_history)
         config = types.GenerateContentConfig(
             temperature=self.temperature,

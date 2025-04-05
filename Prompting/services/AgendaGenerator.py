@@ -1,18 +1,24 @@
 """
 Gemini API를 사용하여 회의 주제 요청에 따라 적절한 회의 안건을 JSON 형식으로 생성하는 클래스
 
-주어진 회의 주제 요청을 기반으로 3~10개의 안건 아이템을 포함하는 회의 안건을 생성하며,
-각 안건은 단계(step), 주제(topic), 설명(description)을 포함함.
-
-생성된 안건은 JSON 형식으로 반환.
+주어진 회의 주제 요청을 기반으로 3~10개의 안건 아이템을 포함하는 회의 안건을 생성
 """
-from .gemini_client import GeminiClient
+from .GeminiClient import GeminiClient
 from google.genai import types
+
+prompt_template_kr = \
+    """
+다음 요청에 대해 적절한 회의 안건을 한글 JSON 형식으로 나열해줘. 안건 번호를 의미하는 step은 1부터 시작하는 게 규칙이야.
+예상되는 회의 규모에 따라 최소 3개 이상 최대 10개 이하의 안건을 만들어주되, 안건명을 무엇을 논의하는 게 좋을 지 누구나 잘 알 수 있도록 구체적으로 작성해줘.:
+Text: {topic_request}
+"""
 
 prompt_template = \
     """
-List an appropriate meeting agenda in Korean JSON format for the following requests. 
-Provide a minimum of 3 agenda items and no more than 10, depending on the expected size of the meeting:
+List the appropriate meeting agendas in Korean JSON format for the following request. 
+The 'step', which is the agenda number, should start with 1.
+Provide at least 3 agenda items and no more than 10, depending on the expected size of the meeting,
+but please make each 'topic' specific so that everyone knows what to expect:
 Text: {topic_request}
 """
 
@@ -43,13 +49,11 @@ class AgendaGenerator:
                 'type': 'OBJECT',
                 'required': [
                     'step',
-                    'topic',
-                    'description'
+                    'topic'
                 ],
                 'properties': {
                     'step': {'type': 'INTEGER'},  # 몇 번째 안건인지
                     'topic': {'type': 'STRING'},  # 안건명
-                    'description': {'type': 'STRING'},  # 안건에 대한 설명
                 }
             },
             'type': 'ARRAY',  # 위 요소를 갖는 안건 object가 담긴 배열을 반환하도록 정의
@@ -65,12 +69,13 @@ class AgendaGenerator:
         prompt = self.template.format(topic_request=topic_request)
         return prompt
 
-    async def generate_agenda(self, topic_request):
+    async def generate_agenda(self, room_id, topic_request):
         """
-        Gemini API를 사용하여 회의 안건을 생성
+        Gemini API를 사용하여 회의 안건을 생성하고 DB에 저장
 
+        :param room_id: 회의 방 ID, str
         :param topic_request: 회의 주제 요청, str
-        :return: 생성된 회의 안건, JSON 형식 (안건 dict가 담긴 list)
+        :return: 생성된 회의 안건 리스트, JSON 형식
         """
         prompt = self._generate_prompt(topic_request)
         config = types.GenerateContentConfig(
@@ -81,5 +86,16 @@ class AgendaGenerator:
             response_mime_type=self.response_mime_type,
             response_schema=self.response_schema
         )
-        response = await self.client.generate_content_async(prompt, config)
-        return response.parsed  # json 형식으로 파싱하여 반환
+        response = self.client.generate_content(prompt, config)
+        agenda_list = response.parsed  # json 형식으로 파싱
+
+        return agenda_list
+
+    def parse_response_to_agenda_data(self, response):
+        agendas = {}
+        for data in response:
+            step = str(data.get("step", -1))
+            topic = data.get("topic", '')
+            agendas[step] = topic
+
+        return agendas
