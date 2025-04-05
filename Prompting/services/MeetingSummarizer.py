@@ -5,7 +5,7 @@ Gemini API를 사용하여 회의록을 요약하는 클래스
 안건별 주요 내용 정리는 각 발언자의 의견과 태도를 정리하는 형식으로 생성.
 생성된 요약은 JSON 형식으로 반환.
 """
-from .gemini_client import GeminiClient
+from .GeminiClient import GeminiClient
 from google.genai import types
 
 INPUT_TOKEN_LIMIT = 1048576     # Limit of Gemini 2.0 flash 입력 토큰 제한 수
@@ -130,3 +130,28 @@ class MeetingSummarizer:
             result += r.parsed  # 응답 결과 병합
         return result
 
+    def parse_response_to_summary_data(self, response):
+        summary_list = []
+        for data in response:
+            step = data.get("step", -1)
+            sub_topic = data.get("sub_topic", '')
+            conclusion = data.get("conclusion", '')
+            highlights = data.get("summary", '').split('\n')
+            indented_highlights = ''
+            for h in highlights:
+                indented_highlights += '\t' + h + '\n'
+
+            title = f"{step}. {sub_topic}\n\n"
+            highlight_text = "주요 발언:\n" + indented_highlights
+            conclusion_text = "결론:\n" + '\t' + conclusion
+
+            summary_content = highlight_text + conclusion_text
+            agenda_summary = {
+                "agendaId": step,
+                "topic": sub_topic,
+                "content": summary_content
+            }
+
+            summary_list.append(agenda_summary)
+
+        return summary_list
