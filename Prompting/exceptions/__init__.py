@@ -1,4 +1,5 @@
 from .errors import GeminiError, MongoAccessError, DataLoaderError
+from .decorators import catch_and_raise
 from .handlers import (
     gemini_exception_handler,
     mongo_exception_handler,
