@@ -3,7 +3,7 @@ Gemini API를 사용하여 회의 주제 요청에 따라 적절한 회의 안�
 
 주어진 회의 주제 요청을 기반으로 3~10개의 안건 아이템을 포함하는 회의 안건을 생성
 """
-from .gemini_client import GeminiClient
+from .GeminiClient import GeminiClient
 from google.genai import types
 
 prompt_template_kr = \

@@ -5,7 +5,7 @@ Gemini API를 사용하여 회의록을 요약하는 클래스
 안건별 주요 내용 정리는 각 발언자의 의견과 태도를 정리하는 형식으로 생성.
 생성된 요약은 JSON 형식으로 반환.
 """
-from .gemini_client import GeminiClient
+from .GeminiClient import GeminiClient
 from google.genai import types
 
 INPUT_TOKEN_LIMIT = 1048576     # Limit of Gemini 2.0 flash 입력 토큰 제한 수

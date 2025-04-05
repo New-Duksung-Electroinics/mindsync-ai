@@ -3,7 +3,7 @@ Gemini API를 사용하여 MBTI 성향이 반영된 가상 참여자의 채팅�
 
 회의 주제, 직전 안건에 대한 논의 내용, 넘어가고자 하는 안건에 대한 정보를 바탕으로 MBTI 성향 정보를 반영해 채팅 생성.
 """
-from .gemini_client import GeminiClient
+from .GeminiClient import GeminiClient
 from google.genai import types
 from Prompting.utils.MbtiInstructor import MbtiInstructor
 
