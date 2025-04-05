@@ -74,67 +74,67 @@
 					"msg": "통합을 통해 시너지를 창출하고 효율성을 극대화하는 방안을 논의해 봅시다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 1,
 					"speaker_name": "박선영",
 					"is_speaker_moderator": false,
 					"msg": "부서 통합, 긍정적인 측면이 많을 거라고 봅니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 1,
 					"speaker_name": "박선영",
 					"is_speaker_moderator": false,
 					"msg": "고객 데이터를 공유하고 통합된 마케팅 전략을 수립하면 타겟팅 정확도를 높일 수 있죠."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 1,
 					"speaker_name": "박선영",
 					"is_speaker_moderator": false,
 					"msg": "이건 곧 매출 증대로 이어질 겁니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 1,
 					"speaker_name": "박선영",
 					"is_speaker_moderator": false,
 					"msg": "그리고 커뮤니케이션 채널을 일원화하면 의사 결정 속도도 빨라지고, 불필요한 업무 중복도 줄일 수 있습니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 2,
 					"speaker_name": "이민호",
 					"is_speaker_moderator": false,
 					"msg": "물론 긍정적인 측면이 많죠."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 2,
 					"speaker_name": "이민호",
 					"is_speaker_moderator": false,
 					"msg": "하지만 통합 과정에서 인력 재배치 문제가 발생할 수 있습니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 2,
 					"speaker_name": "이민호",
 					"is_speaker_moderator": false,
 					"msg": "두 부서의 중복되는 업무를 어떻게 조정하고, 새로운 역할 분담을 어떻게 할 것인지 신중하게 검토해야 합니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 2,
 					"speaker_name": "이민호",
 					"is_speaker_moderator": false,
 					"msg": "특히 기존 업무에 대한 숙련도가 높은 직원들의 반발을 최소화하고, 새로운 환경에 적응할 수 있도록 충분한 교육과 지원을 제공해야 합니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 3,
 					"speaker_name": "최지혜",
 					"is_speaker_moderator": false,
 					"msg": "통합 후 성과 측정 지표를 어떻게 설정할 것인지도 중요합니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 3,
 					"speaker_name": "최지혜",
 					"is_speaker_moderator": false,
 					"msg": "통합된 부서의 성과를 객관적으로 평가하고, 공정한 보상 체계를 마련해야 직원들의 동기 부여를 유지할 수 있습니다."
 				},
 				{
-					"speaker_id": 0,
+					"speaker_id": 3,
 					"speaker_name": "최지혜",
 					"is_speaker_moderator": false,
 					"msg": "매출액, 고객 만족도, 시장 점유율 등 다양한 지표를 종합적으로 고려하여 평가 기준을 설정해야 합니다."
