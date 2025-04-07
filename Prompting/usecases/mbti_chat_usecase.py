@@ -3,7 +3,7 @@ from Prompting.schemas import ChatRequest
 from Prompting.repository import ChatRepository, RoomRepository, UserRepository, AgendaRepository
 from Prompting.usecases.usecase_utils import load_meeting_room_info, load_participants_info
 from Prompting.usecases.meeting_context import MeetingContext, ChatLog
-from Prompting.exceptions import catch_and_raise, MongoAccessError, GeminiCallError
+from Prompting.exceptions import catch_and_raise, MongoAccessError
 from fastapi.exceptions import RequestValidationError
 
 
@@ -51,9 +51,4 @@ async def load_chat_context(
         participants=participants,
         chats=chats
     )
-
-
-@catch_and_raise("Gemini 챗 생성", GeminiCallError)
-async def generate_chat(request, dataloader, mbti, bot):
-    return await bot.generate_chat(dataloader, mbti, request.agendaId)
 
