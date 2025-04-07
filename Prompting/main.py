@@ -10,6 +10,9 @@ from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Respons
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
 from Prompting.utils import MeetingDataLoader
+from Prompting.usecases.agenda_usecase import generate_agendas, save_agendas
+from Prompting.usecases.summarize_usecase import load_summary_context, generate_summary, save_summary
+from Prompting.usecases.mbti_chat_usecase import load_chat_context, generate_chat
 
 from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError
 from Prompting.exceptions.decorators import catch_and_raise
@@ -29,21 +32,6 @@ app.add_exception_handler(Exception, general_exception_handler)
 # -------------------- 공통 유틸 함수 --------------------
 def success_response(data=None, message="요청이 성공했습니다."):
     return JSONResponse(status_code=200, content={"status": "SUCCESS", "message": message, "data": data})
-
-async def load_meeting_room_context(room_id, room_repo, user_repo):
-    room_data = await room_repo.get_room_info(room_id)
-    user_emails = room_data["participants"] + [room_data["host_email"]]
-    user_info_list = await user_repo.get_user_list_by_emails(user_emails)
-    return room_data, user_info_list
-
-def create_dataloader(room_data, agenda_data, user_info_list, chat_logs):
-    return MeetingDataLoader(
-        topic=room_data["content"],
-        agendas=agenda_data["agendas"],
-        host=room_data["host_email"],
-        participants=user_info_list,
-        chat_logs=chat_logs
-    )
 
 # -------------------- DI 함수 -------------------------
 def get_agenda_service():
@@ -69,27 +57,18 @@ async def generate_and_save_agendas(
         agenda_repo: AgendaRepository = Depends(get_agenda_repo)
 ):
     """
-    회의 안건 생성 API 엔드포인트
+    회의 안건 생성 API
 
-    :param request: 회의 주제 요청, str
-    :return: 생성된 회의 안건, id-안건명 매핑된 dict
+    Args:
+        request: 회의 안건 생성 요청 body
+        agenda_service: Gemini 기반 안건 생성 서비스 객체 (DI 자동 관리)
+        agenda_repo: 안건 데이터 관리 객체 (DI 자동 관리)
+
+    Returns:
+        Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-
-    # 1. 안건 생성 (Gemini 호출)
-    @catch_and_raise("Gemini 안건 생성", GeminiCallError)
-    async def generate_agendas():
-        agenda_list = await agenda_service.generate_agenda(request.roomId, request.description)
-        agendas = agenda_service.parse_response_to_agenda_data(agenda_list)  # DB 저장형식으로 변환
-        return agendas
-
-    # 2. MongoDB 저장
-    @catch_and_raise("MongoDB 데이터 저장", MongoAccessError)
-    async def save_agendas(agendas: dict):
-        await agenda_repo.save_agenda(request.roomId, agendas)
-
-    # 실행
-    agendas = await generate_agendas()
-    await save_agendas(agendas)
+    agendas = await generate_agendas(request, agenda_service)
+    await save_agendas(request, agendas, agenda_repo)
 
     return success_response(data=agendas, message="안건 생성을 완료했습니다.")
 
@@ -104,40 +83,29 @@ async def summarize_meeting_chat(
         agenda_repo: AgendaRepository = Depends(get_agenda_repo)
 ):
     """
-    회의 요약 생성 API 엔드포인트
+    회의 요약 생성 API
 
-    :return: 생성된 회의 요약, JSON string
+    Args:
+        request: 회의 요약 생성 요청 body
+        summarizer: Gemini 기반 요약 생성 서비스 객체 (DI 자동 관리)
+        chat_repo: 채팅 데이터 관리 객체 (DI 자동 관리)
+        room_repo: 채팅방 데이터 관리 객체 (DI 자동 관리)
+        user_repo: 사용자 데이터 관리 객체 (DI 자동 관리)
+        agenda_repo: 안건 데이터 관리 객체 (DI 자동 관리)
+
+    Returns:
+        Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-    # 1. MongoDB 데이터 로드
-    @catch_and_raise("MongoDB 데이터 로딩", MongoAccessError)
-    async def load_data():
-        chat_data = await chat_repo.get_chat_logs_by_room(request.roomId)  # 채팅 내역
-        agenda_data = await agenda_repo.get_agenda_by_room(request.roomId)  # 안건 정보
-        room_data, user_info_list = await load_meeting_room_context(request.roomId, room_repo, user_repo)  # 채팅방 및 참여자 정보
-        return room_data, agenda_data, user_info_list, chat_data
-
-    # 2. 회의 데이터 재구성 객체 초기화
-    @catch_and_raise("DataLoader 생성", PromptBuildError)
-    async def build_dataloader(room_data, agenda_data, user_info_list, chat_data):
-        dataloader = create_dataloader(room_data, agenda_data, user_info_list, chat_data)
-        return dataloader
-
-    # 3. 요약 생성 (Gemini 호출)
-    @catch_and_raise("Gemini 요약 생성", GeminiCallError)
-    async def generate_summary(dataloader):
-        summary_list = await summarizer.generate_summary(dataloader)
-        summary_dict = summarizer.parse_response_to_summary_data(summary_list)
-        return summary_dict
-
-    @catch_and_raise("MongoDB 데이터 저장", MongoAccessError)
-    async def save_summary(summary_dict):
-        await room_repo.save_summary(request.roomId, summary_dict)
-
-    # 실행
-    room_data, agenda_data, user_info_list, chat_data = await load_data()
-    dataloader = await build_dataloader(room_data, agenda_data, user_info_list, chat_data)
-    summary = await generate_summary(dataloader)
-    await save_summary(summary)
+    meeting_context = await load_summary_context(request.roomId, chat_repo, agenda_repo, room_repo, user_repo)
+    dataloader = MeetingDataLoader(
+        topic=meeting_context.topic,
+        agendas=meeting_context.agendas,
+        host=meeting_context.host,
+        participants=meeting_context.participants,
+        chat_logs=meeting_context.chats
+    )
+    summary = await generate_summary(dataloader, summarizer)
+    await save_summary(request, summary, room_repo)
 
     return success_response(data=summary, message="요약 생성을 완료했습니다.")
 
@@ -152,42 +120,32 @@ async def generate_mbti_chat(
         agenda_repo: AgendaRepository = Depends(get_agenda_repo)
 ):
     """
-    MBTI 챗봇의 채팅 생성 API 엔드포인트
+    MBTI 봇 채팅 생성 API
 
-    :return: (샘플 데이터에 대해) 생성된 MBTI 챗봇의 채팅, dict
+    Args:
+        request: 채팅 생성 요청 body
+        bot: Gemini 기반 MBTI 봇 채팅 생성 서비스 객체 (DI 자동 관리)
+        chat_repo: 채팅 데이터 관리 객체 (DI 자동 관리)
+        room_repo: 채팅방 데이터 관리 객체 (DI 자동 관리)
+        user_repo: 사용자 데이터 관리 객체 (DI 자동 관리)
+        agenda_repo: 안건 데이터 관리 객체 (DI 자동 관리)
+
+    Returns:
+        Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-    # 1. MongoDB에서 데이터 로딩 + 안건 유효성 검사
-    @catch_and_raise("MongoDB 데이터 로딩", MongoAccessError)
-    async def load_data():
-        agenda_data = await agenda_repo.get_agenda_by_room(request.roomId)
-        if request.agendaId not in agenda_data.get('agendas').keys():
-            raise RequestValidationError([{"loc": ["agendaId"], "msg": "유효하지 않은 안건 번호", "type": "value_error"}])
-
-        chat_data = []
-        if request.agendaId != '1':  # 첫 번째 안건이 아닐 시
-            chat_data = await chat_repo.get_chat_logs_of_previous_agenda(request.roomId, request.agendaId)  # 이전 대화 내역 읽기
-
-        room_data, user_info_list = await load_meeting_room_context(request.roomId, room_repo, user_repo)
-        return agenda_data, chat_data, room_data, user_info_list
-
-    # 2. DataLoader 생성
-    @catch_and_raise("DataLoader 생성", PromptBuildError)
-    async def build_dataloader(room_data, agenda_data, user_info_list, chat_data):
-        dataloader = create_dataloader(room_data, agenda_data, user_info_list, chat_data)
-        if not dataloader.ai_mbti:
-            raise ValueError("봇의 MBTI 설정이 유효하지 않습니다.")
-        return dataloader
-
-    # 3. Gemini 챗 생성
-    @catch_and_raise("Gemini 챗 생성", GeminiCallError)
-    async def generate_chat(dataloader, mbti):
-        return await bot.generate_chat(dataloader, mbti, request.agendaId)
-
-    # 실행
-    agenda_data, chat_data, room_data, user_info_list = await load_data()
-    dataloader = await build_dataloader(room_data, agenda_data, user_info_list, chat_data)
+    meeting_context = await load_chat_context(request, chat_repo, agenda_repo, room_repo, user_repo)
+    dataloader = MeetingDataLoader(
+        topic=meeting_context.topic,
+        agendas=meeting_context.agendas,
+        host=meeting_context.host,
+        participants=meeting_context.participants,
+        chat_logs=meeting_context.chats
+    )
     mbti = dataloader.ai_mbti
-    chat = await generate_chat(dataloader, mbti)
+    if not mbti:
+        raise PromptBuildError()
+
+    chat = await generate_chat(request, dataloader, mbti, bot)
     response = ChatResponse(
         roomId=request.roomId,
         name=mbti,
@@ -195,7 +153,7 @@ async def generate_mbti_chat(
         message=chat,
         agenda_id=request.agendaId
     )
-    return success_response(data=response, message="MBTI 봇의 채팅 생성을 완료했습니다.")
+    return success_response(data=response.dict(), message="MBTI 봇의 채팅 생성을 완료했습니다.")
 
 @app.get("/")
 def root():
