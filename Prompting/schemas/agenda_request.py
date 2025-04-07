@@ -1,5 +1,5 @@
 from pydantic import BaseModel
 
-class AgendaGenRequest(BaseModel):
+class AgendaRequest(BaseModel):
     roomId: str
     description: str
