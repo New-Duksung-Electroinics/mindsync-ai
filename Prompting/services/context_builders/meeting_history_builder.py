@@ -1,70 +1,87 @@
-"""
-회의 채팅 기록을 로드하고 처리하는 클래스
-
-DB에서 불러온 회의 데이터를 받아 회의 주제, 발언자 정보, 안건별 발언 내역 등을 관리
-주요 기능:
-    - Gemini API 프롬프트 첨부용 채팅 내역 텍스트 구성
-    - 토큰 수 제한에 맞춰 텍스트를 분할
-"""
 from collections import Counter
 import itertools
 import re
-from Prompting.usecases.meeting_context import ChatLog, UserInfo
+from Prompting.usecases.meeting_context import MeetingContext, UserInfo, ChatLog
+from Prompting.exceptions.errors import PromptBuildError
+from typing import Optional, Iterator, Callable
 
 
 class MeetingHistoryBuilder:
-    def __init__(self, topic: str, agendas: dict, host: str, participants: list[UserInfo], chat_logs: list[ChatLog]):
+    def __init__(self, context: MeetingContext):
         """
-        MeetingHistoryBuilder 클래스 생성자
+        프롬프트 빌드에 필요한 회의 Context 문자열을 생성하고 처리하는 클래스
+
+        주요 기능:
+         - Gemini API 프롬프트 첨부용 회의 Context 텍스트 구성
+         - 토큰 수 제한에 맞춰 텍스트를 분할
         """
-        self.topic = topic          # 회의 주제
-        self.agendas = agendas      # 회의 안건들(번호-주제 쌍)
-        self.host = host            # 회의 개최자(이메일)
-        self.chats = chat_logs   # 안건별 발언 내용
-        self.speaker_id_to_name = self._generate_speaker_name_map(participants)  # 발언자 ID-이름 매핑 생성
-        self.ai_mbti = self.find_ai_name(participants)
+        self.topic: str = context.topic  # 회의 주제
+        self.agendas: dict[str, str] = context.agendas  # 회의 안건들(번호-주제 쌍)
+        self.host: str = context.host  # 회의 개최자(이메일)
+        self.participants: list[UserInfo] = context.participants  # 회의 참여자 리스트
+        self.chats: list[ChatLog] = context.chats  # 채팅 기록 리스트
+        self.bot: Optional[UserInfo] = self._get_bot_info()  # AI 봇 정보
+        self.email_to_name: dict[str, str] = self._generate_speaker_name_map()  # 발언자 이메일-이름 매핑 생성
 
 
-    def find_ai_name(self, participants):
+    def build_prompt_chunks(
+            self,
+            count_tokens_callback: Optional[Callable[[str], int]] = None,
+            token_alloc: Optional[int] = None) -> list[str]:
         """
-        이메일 주소에서 @ai.com 패턴을 가진 AI 봇을 검사하여 이름 반환(MBTI)
+        프롬프트에 첨부하기 위한 회의 Context 텍스트를 토큰 수 제한을 고려하여 분할해 리스트에 담아 반환
+
+        Args:
+            count_tokens_callback: 토큰 수 계산 콜백 함수 (선택 사항)
+            token_alloc: Context에 할당된 최대 토큰 수 (선택 사항)
+
+        Returns:
+            프롬프트 첨부용 회의 Context 리스트
         """
-        pattern = r".*@ai\.com"  # @ai.com 패턴
-        ai_name = ''
-        for p in participants:
-            email = p.email
-            if re.search(pattern, email):
-                ai_name = p.name
-                break
-        if ai_name != '':
-            return ai_name
-        else:
-            return None
+
+        topic_str = f"회의 주제: {self.topic}\n"
+        context_string_list = self._get_context_string_list()  # 안건별 context 문자열 리스트
+
+        # 토큰 수 제한에 따른 분할 처리
+        if count_tokens_callback and token_alloc:
+            return self._split_data_within_token_allocation(
+                topic_str, context_string_list, count_tokens_callback, token_alloc
+            )
+        else:  # 토큰 수 제한이 없는 경우 전체 텍스트 반환
+            return [topic_str + '\n'.join(context_string_list)]
 
 
-    def _generate_speaker_name_map(self, speakers):
+    def _get_bot_info(self) -> Optional[UserInfo]:
         """
-        발언자 ID와 이름 매핑을 생성. 동명이인 구분 처리 로직을 포함함.
-
-        :param speakers: 발언자 목록, str list
-        :return: 발언자-ID 이름 매핑, dict
+        회의 참여자 목록에서 AI 봇을 찾아내 봇의 정보(UserInfo)를 반환
         """
-        org_id_to_name = {}
-        for s in speakers:
-            org_id_to_name[s.email] = s.name  # ID-이름 매핑(동명이인 구분되지 않은 원본)
-        names = org_id_to_name.values()  # 이름 목록 추출
-        counters = {name: itertools.count() for name in names}  # 동명이인 확인을 위한 카운터
-        identified_names = self._append_name_identifier(names, counters)  # 동명이인 알파벳 식별자 추가
-        id_to_name = dict(zip(org_id_to_name.keys(), identified_names))  # 동명이인이 식별된 ID-이름 매핑 생성
-        return id_to_name
+        pattern = r".*@ai\.com"
+        for p in self.participants:
+            if re.search(pattern, p.email):
+                return p
+        return None
 
-    def _append_name_identifier(self, names, counters):
+
+    def _generate_speaker_name_map(self) -> dict[str, str]:
         """
-        동명이인이 있을 시 식별자를 추가 (식별자는 A, B, C 등 알파벳 대문자)
+        동명이인이 식별된 회의 참여자 [이메일]-[이름] 매핑을 생성해 반환
+        """
+        org_id_to_name = {p.email: p.name for p in self.participants}     # 동명이인 식별 전 이메일-이름 매핑
+        names = list(org_id_to_name.values())
+        counters = {name: itertools.count() for name in names}            # 동명이인 확인을 위한 카운터 변수
+        identified_names = self._append_name_identifier(names, counters)  # 동명이인은 알파벳 식별자 추가
+        return dict(zip(org_id_to_name.keys(), identified_names))   # 동명이인이 식별된 이메일-이름 매핑 생성
 
-        :param names: 이름 목록, list
-        :param counters: 동명이인 카운터, dict
-        :return: 식별자가 추가된 이름 목록, list
+    def _append_name_identifier(self, names: list[str], counters: dict[str, Iterator[int]]) -> list[str]:
+        """
+        이름 리스트에서 동명이인을 찾아내, 식별자(A, B, C...)를 추가한 이름 리스트를 반환
+
+        Args:
+            names: 이름 리스트
+            counters: [이름]-[동명이인 수 카운팅을 위한 iterator 객체] 매핑
+
+        Returns:
+            동명이인에 식별자가 붙은 이름 리스트
         """
         name_counts = Counter(names)    # 이름별 등장 횟수 계산
         result = []
@@ -75,77 +92,65 @@ class MeetingHistoryBuilder:
                 result.append(name)
         return result
 
-    def process_chat_history_for_prompt(self, count_tokens_callback=None, token_alloc=None):
+    def _get_context_string_list(self):
         """
-        Gemini API 프롬프트 생성을 위한 텍스트를 구성. 토큰 수 제한을 고려하여 텍스트를 분할 가능(분할 단위는 안건별로)
-
-        예를 들어, 총 6개의 안건에 대한 대화 내역이 있는데, 제한 토큰 수로 한 번에 보내지 못한다면,
-        안건 1~3번까지를 포함하는 텍스트와 4~6번 내역을 포함하는 텍스트가 분할되어 리스트에 담김.
-
-        :param count_tokens_callback: 토큰 수 계산 콜백 함수 (선택 사항), funtion
-        :param token_alloc: (채팅 내역을 표현하는 데) 할당된 최대 토큰 수 (선택 사항), int
-        :return: 프롬프트 첨부용 채팅 내역 텍스트, list
+        채팅 기록을 기반으로 안건별 채팅 내역을 표현한 Context 문자열을 구성하고,
+        안건 순서대로 정렬된 문자열 리스트를 반환
         """
-        topic_str = f"회의 주제: {self.topic}\n"  # 회의 주제 문자열
-        chat_string_list = self._get_sub_topic_chat_list()   # 안건별 발언 목록
-        if count_tokens_callback and token_alloc:   # 토큰 수 제한에 따른 분할 처리
-            return self._split_data_within_token_allocation(topic_str, chat_string_list,
-                                                           count_tokens_callback, token_alloc)
-        else:  # 토큰 수 제한이 없는 경우 전체 텍스트 반환
-            return [topic_str + '\n'.join(chat_string_list)]
-
-    def _split_data_within_token_allocation(self, topic_str, target_list, count_tokens_callback, token_alloc):
-        """
-        할당된 토큰 수 내에서 텍스트 분할. 재귀 호출 활용.
-
-        :param topic_str: 회의 주제 문자열
-        :param target_list: 분할할 텍스트 목록(=안건별 발언 목록)
-        :param count_tokens_callback: 토큰 수 계산 콜백 함수, funtion
-        :param token_alloc: (채팅 내역을 표현하는 데) 할당된 최대 토큰 수, int
-        :return: (분할된) 프롬프트 첨부용 채팅 내역 텍스트, list
-        """
-        input_string = topic_str + '\n'.join(target_list)  # 전체 텍스트
-        if count_tokens_callback(input_string) > token_alloc:  # 토큰 수 초과 시
-            if len(target_list) == 1:  # 단일 요소도 초과하면 예외 처리(미구현)
-                return input_string  # 조건 상 케이스 존재할 확률 0에 가까우므로 일단 예외 처리 미구현
-
-            mid = len(target_list) // 2  # 중간 지점 계산
-            left = self._split_data_within_token_allocation(topic_str,
-                                                           target_list[:mid], count_tokens_callback, token_alloc)  # 왼쪽 부분 분할
-            right = self._split_data_within_token_allocation(topic_str,
-                                                            target_list[mid:], count_tokens_callback, token_alloc)  # 오른쪽 부분 분할
-            return left + right  # 분할된 텍스트를 하나의 리스트에 담기
-        else:
-            return [input_string]   # 전체 텍스트 반환
-
-    def _get_sub_topic_chat_list(self):
-        """
-        안건별 발언 목록 생성.
-        """
-        lines = {}
+        context_dict: dict = {}  # 안건별 context(문자열 리스트)를 관리할 딕셔너리
         for chat in self.chats:
-            agenda_id = chat.agenda_id  # 안건 번호
-            if agenda_id not in lines:
-                sub_topic = self.agendas.get(agenda_id, '')  # 안건 제목
-                sub_topic_str = f"안건 {agenda_id}. {sub_topic}"  # 안건 제목 문자열
-                lines[agenda_id] = [sub_topic_str]
+            agenda_id = chat.agenda_id
 
-            speaker_id = chat.sender  # 발언자 ID
-            msg = chat.message  # 발언 내용
+            # 채팅이 속한 안건 ID를 기반으로 안건명 구해 제목 텍스트 설정
+            if agenda_id not in context_dict:
+                sub_topic = self.agendas.get(agenda_id, '')
+                title = f"안건 {agenda_id}. {sub_topic}"
+                context_dict[agenda_id] = [title]
 
-            if self.host == speaker_id:  # 진행자 여부
+            # 채팅 송신자의 역할 알아내기
+            if chat.sender == self.host:  # 진행자 여부 검사
                 speaker_role = "(진행자)"
-            elif speaker_id == f"{str(self.ai_mbti).lower()}@ai.com":  # ai 여부
+            elif chat.sender == self.bot.email:  # ai 봇 여부 검사
                 speaker_role = "(YOU)"
             else:
                 speaker_role = ""
-            speaker_name_str = self.speaker_id_to_name[speaker_id] + speaker_role  # 발언자 이름 (진행자 표기 포함)
-            chat_str = f"{speaker_name_str}: {msg}"  # 발언 문자열
-            lines[agenda_id].append(chat_str)
 
-        chat_string_list = []
-        for agenda_id in lines:
-            sub_topic_chat = '\n'.join(lines[agenda_id])
-            chat_string_list.append(sub_topic_chat)
+            speaker_name_str = self.email_to_name[chat.sender] + speaker_role
+            chat_str = f"{speaker_name_str}: {chat.message}"
 
-        return chat_string_list
+            context_dict[agenda_id].append(chat_str)  # 해당 안건의 context에 채팅 문자열을 추가
+
+        # 안건별 context(문자열 리스트)를 하나의 문자열로 조인하여 리스트에 담아 반환
+        return ['\n'.join(context_dict[agenda_id]) for agenda_id in sorted(context_dict.keys())]
+
+    def _split_data_within_token_allocation(
+            self, topic: str, target: list[str],
+            count_tokens_callback: Callable[[str], int], token_alloc: int) -> list[str]:
+        """
+        재귀 호출 기반으로 할당된 토큰 수 내에서 텍스트를 분할해 리스트로 반환
+
+        Args:
+            topic_str: 회의 주제
+            target_list: 안건별 Context 문자열 리스트
+            count_tokens_callback: 토큰 수 계산 콜백 함수 (선택 사항)
+            token_alloc: Context에 할당된 최대 토큰 수 (선택 사항)
+
+        Returns:
+            토큰 수 제한에 맞게 분할된 회의 Context 리스트
+        """
+        input_string = topic + '\n'.join(target)
+        if count_tokens_callback(input_string) > token_alloc:  # 토큰 수 제한 초과 시
+            if len(target) == 1:
+                raise PromptBuildError()    # 단일 요소도 제한 초과하면 예외 처리(발생 확률 매우 희박)
+
+            # 반으로 분할해 토큰 수 제한에 걸리면 다시 분할하도록 재귀 호출
+            mid = len(target) // 2
+            left = self._split_data_within_token_allocation(
+                topic, target[:mid], count_tokens_callback, token_alloc
+            )
+            right = self._split_data_within_token_allocation(
+                topic, target[mid:], count_tokens_callback, token_alloc
+            )
+            return left + right     # 분할 완료
+        else:
+            return [input_string]   # 토큰 수 제한 초과하지 않으면 전체 텍스트 반환

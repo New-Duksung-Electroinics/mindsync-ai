@@ -95,8 +95,8 @@ class MeetingSummarizer:
         :return: 생성된 회의 요약 데이터, JSON 형식 (안건별 요약 dict가 담긴 list)
         """
         # 채팅 내역 텍스트를 목록으로 준비(토큰 수 제한 고려해 필요 시 분할 처리)
-        chat_history = history_builder.process_chat_history_for_prompt(count_tokens_callback=self.count_tokens,
-                                                                  token_alloc=self.chat_history_token_alloc)
+        chat_history = history_builder.build_prompt_chunks(count_tokens_callback=self.count_tokens,
+                                                           token_alloc=self.chat_history_token_alloc)
         result = []
         prompts = self.generate_prompts(chat_history)   # 요청 프롬프트 목록을 생성
         config = types.GenerateContentConfig(   # Gemini API 상세 설정

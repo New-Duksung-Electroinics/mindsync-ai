@@ -96,13 +96,7 @@ async def summarize_meeting_chat(
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
     meeting_context = await load_summary_context(request.roomId, chat_repo, agenda_repo, room_repo, user_repo)
-    history_builder = MeetingHistoryBuilder(
-        topic=meeting_context.topic,
-        agendas=meeting_context.agendas,
-        host=meeting_context.host,
-        participants=meeting_context.participants,
-        chat_logs=meeting_context.chats
-    )
+    history_builder = MeetingHistoryBuilder(meeting_context)
     summary = await generate_summary(history_builder, summarizer)
     await save_summary(request, summary, room_repo)
 
@@ -133,17 +127,11 @@ async def generate_mbti_chat(
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
     meeting_context = await load_chat_context(request, chat_repo, agenda_repo, room_repo, user_repo)
-    history_builder = MeetingHistoryBuilder(
-        topic=meeting_context.topic,
-        agendas=meeting_context.agendas,
-        host=meeting_context.host,
-        participants=meeting_context.participants,
-        chat_logs=meeting_context.chats
-    )
-    mbti = history_builder.ai_mbti
-    if not mbti:
+    history_builder = MeetingHistoryBuilder(meeting_context)
+    bot_info = history_builder.bot
+    if not bot_info:
         raise PromptBuildError()
-
+    mbti = bot_info.mbti
     chat = await generate_chat(request, history_builder, mbti, bot)
     response = ChatResponse(
         roomId=request.roomId,
