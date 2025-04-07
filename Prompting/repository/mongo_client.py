@@ -7,5 +7,10 @@ load_dotenv()  # .env 파일 로드
 MONGO_URI = os.getenv("MONGO_URI")  # 환경 변수에서 mongo db uri 읽기
 MONGO_DB_NAME = "mindsync-fe"
 
+AGENDA_COLLECTION = "agenda"
+CHAT_COLLECTION = "chat"
+ROOM_COLLECTION = "chatroom"
+USER_COLLECTION = "user"
+
 client = AsyncIOMotorClient(MONGO_URI)
 db: Database = client[MONGO_DB_NAME]

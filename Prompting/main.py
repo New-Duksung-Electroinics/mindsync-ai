@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from Prompting.model import RoomIdRequest, ChatGenRequest, AgendaGenRequest, Response
-from Prompting.repository import AgendaRepository, ChatRepository, ChatRoomRepository, UserRepository
+from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
 from Prompting.utils import MeetingDataLoader
 
@@ -30,8 +30,8 @@ app.add_exception_handler(Exception, general_exception_handler)
 def success_response(data=None, message="요청이 성공했습니다."):
     return JSONResponse(status_code=200, content={"status": "SUCCESS", "message": message, "data": data})
 
-async def load_meeting_room_context(room_id, chatroom_repo, user_repo):
-    room_data = await chatroom_repo.get_room_info(room_id)
+async def load_meeting_room_context(room_id, room_repo, user_repo):
+    room_data = await room_repo.get_room_info(room_id)
     user_emails = room_data["participants"] + [room_data["host_email"]]
     user_info_list = await user_repo.get_user_list_by_emails(user_emails)
     return room_data, user_info_list
@@ -56,8 +56,8 @@ def get_agenda_repo():
     return AgendaRepository()
 def get_chat_repo():
     return ChatRepository()
-def get_chatroom_repo():
-    return ChatRoomRepository()
+def get_room_repo():
+    return RoomRepository()
 def get_user_repo():
     return UserRepository()
 
@@ -99,7 +99,7 @@ async def summarize_meeting_chat(
         request: RoomIdRequest,
         summarizer: MeetingSummarizer = Depends(get_summarizer_service),
         chat_repo: ChatRepository = Depends(get_chat_repo),
-        chatroom_repo: ChatRoomRepository = Depends(get_chatroom_repo),
+        room_repo: RoomRepository = Depends(get_room_repo),
         user_repo: UserRepository = Depends(get_user_repo),
         agenda_repo: AgendaRepository = Depends(get_agenda_repo)
 ):
@@ -112,8 +112,8 @@ async def summarize_meeting_chat(
     @catch_and_raise("MongoDB 데이터 로딩", MongoAccessError)
     async def load_data():
         chat_data = await chat_repo.get_chat_logs_by_room(request.roomId)  # 채팅 내역
-        agenda_data = await agenda_repo.get_agenda_by_id(request.roomId)  # 안건 정보
-        room_data, user_info_list = await load_meeting_room_context(request.roomId, chatroom_repo, user_repo)  # 채팅방 및 참여자 정보
+        agenda_data = await agenda_repo.get_agenda_by_room(request.roomId)  # 안건 정보
+        room_data, user_info_list = await load_meeting_room_context(request.roomId, room_repo, user_repo)  # 채팅방 및 참여자 정보
         return room_data, agenda_data, user_info_list, chat_data
 
     # 2. 회의 데이터 재구성 객체 초기화
@@ -131,9 +131,7 @@ async def summarize_meeting_chat(
 
     @catch_and_raise("MongoDB 데이터 저장", MongoAccessError)
     async def save_summary(summary_dict):
-        save_success = await chatroom_repo.save_summary_by_room_id(request.roomId, summary_dict)
-        if not save_success:
-            raise MongoAccessError("회의 요약 저장 실패")
+        await room_repo.save_summary(request.roomId, summary_dict)
 
     # 실행
     room_data, agenda_data, user_info_list, chat_data = await load_data()
@@ -149,7 +147,7 @@ async def generate_mbti_chat(
         request: ChatGenRequest,
         bot: MbtiChatGenerator = Depends(get_bot_service),
         chat_repo: ChatRepository = Depends(get_chat_repo),
-        chatroom_repo: ChatRoomRepository = Depends(get_chatroom_repo),
+        room_repo: RoomRepository = Depends(get_room_repo),
         user_repo: UserRepository = Depends(get_user_repo),
         agenda_repo: AgendaRepository = Depends(get_agenda_repo)
 ):
@@ -161,7 +159,7 @@ async def generate_mbti_chat(
     # 1. MongoDB에서 데이터 로딩 + 안건 유효성 검사
     @catch_and_raise("MongoDB 데이터 로딩", MongoAccessError)
     async def load_data():
-        agenda_data = await agenda_repo.get_agenda_by_id(request.roomId)
+        agenda_data = await agenda_repo.get_agenda_by_room(request.roomId)
         if request.agendaId not in agenda_data.get('agendas').keys():
             raise RequestValidationError([{"loc": ["agendaId"], "msg": "유효하지 않은 안건 번호", "type": "value_error"}])
 
@@ -169,7 +167,7 @@ async def generate_mbti_chat(
         if request.agendaId != '1':  # 첫 번째 안건이 아닐 시
             chat_data = await chat_repo.get_chat_logs_of_previous_agenda(request.roomId, request.agendaId)  # 이전 대화 내역 읽기
 
-        room_data, user_info_list = await load_meeting_room_context(request.roomId, chatroom_repo, user_repo)
+        room_data, user_info_list = await load_meeting_room_context(request.roomId, room_repo, user_repo)
         return agenda_data, chat_data, room_data, user_info_list
 
     # 2. DataLoader 생성
