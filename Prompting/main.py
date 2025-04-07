@@ -10,7 +10,6 @@ from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Respons
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
 from Prompting.services.context_builders.meeting_history_builder import MeetingHistoryBuilder
-from Prompting.usecases.agenda_usecase import generate_agendas, save_agendas
 from Prompting.usecases.summarize_usecase import load_summary_context, generate_summary, save_summary
 from Prompting.usecases.mbti_chat_usecase import load_chat_context, generate_chat
 
@@ -66,8 +65,9 @@ async def generate_and_save_agendas(
     Returns:
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-    agendas = await generate_agendas(request, agenda_service)
-    await save_agendas(request, agendas, agenda_repo)
+    agenda_list = await agenda_service.generate_agenda(topic_request=request.description)
+    agendas = agenda_service.parse_response_to_agenda_data(response=agenda_list)
+    await agenda_repo.save_agenda(room_id=request.roomId, agenda_dict=agendas)
 
     return success_response(data=agendas, message="안건 생성을 완료했습니다.")
 
