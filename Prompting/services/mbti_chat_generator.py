@@ -3,9 +3,9 @@ Gemini API를 사용하여 MBTI 성향이 반영된 가상 참여자의 채팅�
 
 회의 주제, 직전 안건에 대한 논의 내용, 넘어가고자 하는 안건에 대한 정보를 바탕으로 MBTI 성향 정보를 반영해 채팅 생성.
 """
-from .GeminiClient import GeminiClient
+from .gemini_client import GeminiClient
 from google.genai import types
-from Prompting.utils.MbtiInstructor import MbtiInstructor
+from Prompting.services.context_builders.mbti_trait_builder import MbtiTraitBuilder
 
 prompt_kor_template = \
     """
@@ -49,8 +49,8 @@ class MbtiChatGenerator():
         self.max_output_tokens = max_output_tokens
 
         # MBTI 성향 정보 데이터를 제공하는 객체
-        self.mbtiInstructor = MbtiInstructor(mbti_instruction_file_path) if mbti_instruction_file_path \
-            else MbtiInstructor()
+        self.trait_builder = MbtiTraitBuilder(mbti_instruction_file_path) if mbti_instruction_file_path \
+            else MbtiTraitBuilder()
 
 
     def _generate_prompt(self, mbti, topic, step, sub_topic, prev_chat_history, hangul_length_limit=300):
@@ -71,7 +71,7 @@ class MbtiChatGenerator():
             topic=topic,
             sub_topic=sub_topic,
             hangul_length_limit=hangul_length_limit,
-            mbti_info=self.mbtiInstructor.process_mbti_info_for_prompt(mbti),
+            mbti_info=self.trait_builder.process_mbti_info_for_prompt(mbti),
         )
 
         if int(step) > 1:  # 첫 안건이 아니면, 직전 안건 대화 context를 함께 전달
@@ -82,20 +82,20 @@ class MbtiChatGenerator():
 
         return prompt
 
-    async def generate_chat(self, dataloader, mbti, step):
+    async def generate_chat(self, history_builder, mbti, step):
         """
         Gemini API를 사용하여 MBTI 성향 봇의 채팅을 생성
 
-        :param dataloader: 회의 채팅 내역 데이터 로더 객체, MeetingDataLodaer
+        :param history_builder: 회의 채팅 내역 데이터 로더 객체, MeetingDataLodaer
         :param mbti: 챗봇의 mbti 성향, str
         :param step: 현재 시작되는 안건의 순서, int
         :param sub_topic: 현재 시작되는 안건명, str
         :return: 생성된 채팅, str
         """
         # 채팅 내역 텍스트를 목록으로 준비(토큰 수 제한 고려해 필요 시 분할 처리)
-        topic = dataloader.topic
-        prev_chat_history = dataloader.process_chat_history_for_prompt()
-        sub_topic = dataloader.agendas.get(step, '')
+        topic = history_builder.topic
+        prev_chat_history = history_builder.process_chat_history_for_prompt()
+        sub_topic = history_builder.agendas.get(step, '')
         prompt = self._generate_prompt(mbti, topic, step, sub_topic, prev_chat_history)
         config = types.GenerateContentConfig(
             temperature=self.temperature,
