@@ -6,21 +6,21 @@ DB에서 불러온 회의 데이터를 받아 회의 주제, 발언자 정보, �
     - Gemini API 프롬프트 첨부용 채팅 내역 텍스트 구성
     - 토큰 수 제한에 맞춰 텍스트를 분할
 """
-import json
 from collections import Counter
 import itertools
 import re
+from Prompting.usecases.meeting_context import ChatLog, UserInfo
 
 
 class MeetingDataLoader:
-    def __init__(self, topic: str, agendas: list, host: str, participants: list, chat_logs: list):
+    def __init__(self, topic: str, agendas: dict, host: str, participants: list[UserInfo], chat_logs: list[ChatLog]):
         """
         MeetingDataLoader 클래스 생성자
         """
         self.topic = topic          # 회의 주제
         self.agendas = agendas      # 회의 안건들(번호-주제 쌍)
         self.host = host            # 회의 개최자(이메일)
-        self.contents = chat_logs   # 안건별 발언 내용
+        self.chats = chat_logs   # 안건별 발언 내용
         self.speaker_id_to_name = self._generate_speaker_name_map(participants)  # 발언자 ID-이름 매핑 생성
         self.ai_mbti = self.find_ai_name(participants)
 
@@ -32,9 +32,9 @@ class MeetingDataLoader:
         pattern = r".*@ai\.com"  # @ai.com 패턴
         ai_name = ''
         for p in participants:
-            email = p.get("email", '')
+            email = p.email
             if re.search(pattern, email):
-                ai_name = p.get("name", '')
+                ai_name = p.name
                 break
         if ai_name != '':
             return ai_name
@@ -51,7 +51,7 @@ class MeetingDataLoader:
         """
         org_id_to_name = {}
         for s in speakers:
-            org_id_to_name[s.get('email', 0)] = s.get('name', '')  # ID-이름 매핑(동명이인 구분되지 않은 원본)
+            org_id_to_name[s.email] = s.name  # ID-이름 매핑(동명이인 구분되지 않은 원본)
         names = org_id_to_name.values()  # 이름 목록 추출
         counters = {name: itertools.count() for name in names}  # 동명이인 확인을 위한 카운터
         identified_names = self._append_name_identifier(names, counters)  # 동명이인 알파벳 식별자 추가
@@ -123,15 +123,15 @@ class MeetingDataLoader:
         안건별 발언 목록 생성.
         """
         lines = {}
-        for chat in self.contents:
-            agenda_id = chat.get('agenda_id', -1)  # 안건 번호
+        for chat in self.chats:
+            agenda_id = chat.agenda_id  # 안건 번호
             if agenda_id not in lines:
                 sub_topic = self.agendas.get(agenda_id, '')  # 안건 제목
                 sub_topic_str = f"안건 {agenda_id}. {sub_topic}"  # 안건 제목 문자열
                 lines[agenda_id] = [sub_topic_str]
 
-            speaker_id = chat.get('email', '')  # 발언자 ID
-            msg = chat.get('message', '')  # 발언 내용
+            speaker_id = chat.sender  # 발언자 ID
+            msg = chat.message  # 발언 내용
 
             if self.host == speaker_id:  # 진행자 여부
                 speaker_role = "(진행자)"
