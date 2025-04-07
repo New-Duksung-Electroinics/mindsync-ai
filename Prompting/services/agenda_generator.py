@@ -5,22 +5,7 @@ Gemini API를 사용하여 회의 주제 요청에 따라 적절한 회의 안�
 """
 from .gemini_client import GeminiClient
 from google.genai import types
-
-prompt_template_kr = \
-    """
-다음 요청에 대해 적절한 회의 안건을 한글 JSON 형식으로 나열해줘. 안건 번호를 의미하는 step은 1부터 시작하는 게 규칙이야.
-예상되는 회의 규모에 따라 최소 3개 이상 최대 10개 이하의 안건을 만들어주되, 안건명을 무엇을 논의하는 게 좋을 지 누구나 잘 알 수 있도록 구체적으로 작성해줘.:
-Text: {topic_request}
-"""
-
-prompt_template = \
-    """
-List the appropriate meeting agendas in Korean JSON format for the following request. 
-The 'step', which is the agenda number, should start with 1.
-Provide at least 3 agenda items and no more than 10, depending on the expected size of the meeting,
-but please make each 'topic' specific so that everyone knows what to expect:
-Text: {topic_request}
-"""
+from .templates import AGENDA_PROMPT_KR, AGENDA_PROMPT_EN
 
 
 class AgendaGenerator:
@@ -34,7 +19,7 @@ class AgendaGenerator:
         :param max_output_tokens: 최대 출력 토큰 수 (기본값: 2000)
         """
         self.client = GeminiClient()  # Gemini API 클라이언트 초기화
-        self.template = prompt_template  # 회의록 생성을 위한 프롬프트 템플릿
+        self.template = AGENDA_PROMPT_KR  # 프롬프트 템플릿
 
         # 모델 config 값 설정
         self.temperature = temperature

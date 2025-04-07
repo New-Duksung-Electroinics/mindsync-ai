@@ -6,26 +6,8 @@ Gemini API를 사용하여 MBTI 성향이 반영된 가상 참여자의 채팅�
 from .gemini_client import GeminiClient
 from google.genai import types
 from Prompting.services.context_builders.mbti_trait_builder import MbtiTraitBuilder
+from .templates import CHAT_CONTEXT_KR, CHAT_PROMPT_KR
 
-prompt_kor_template = \
-    """
-너는 MBTI 성격유형에서 {mbti} 성향을 가진 회의 참여자야. {topic}에 대한 회의를 진행 중이고, 
-'{sub_topic}' 안건에 대해 논의를 시작하려고 해.
-모두의 회의 참여를 '자연스럽게' 독려하고 목적에 맞는 원활한 진행을 위해서 참여자로서 발언하고 싶은 내용을 {hangul_length_limit}자 내로 작성해줘. 
-마크다운 서식은 절대 사용하지 말고.
-
-네가 가져야 할 {mbti} 성향에 대한 참고 자료:
-{mbti_info}
-"""
-
-context_kor_template = \
-"""
-반드시 바로 직전에 논의했던 안건에 대한 이 채팅 내역을 참고해서 흐름에 맞게 발언해야 해.
-그리고 다른 참여자들의 발언 분위기와 자연스럽게 어울리는 말투를 사용해. 
-네 성향을 감안하되, 차분하거나 활발한 정도 등 발언을 회의 분위기와 어울리는 수준으로 조정해.
-Previous chat history: 
-{prev_chat_history}
-"""
 
 class MbtiChatGenerator():
     def __init__(self, mbti_instruction_file_path=None, temperature=1.5, top_p=0.95, top_k=40, max_output_tokens=8192):
@@ -39,8 +21,8 @@ class MbtiChatGenerator():
         :param max_output_tokens: 최대 출력 토큰 수 (기본값: 8192, 최댓값)
         """
         self.client = GeminiClient()  # Gemini API 클라이언트 초기화
-        self.template = prompt_kor_template  # 회의록 생성을 위한 프롬프트 템플릿
-        self.context_template = context_kor_template  # 이전 채팅 내역 첨부를 위한 템플릿
+        self.template = CHAT_PROMPT_KR  # 프롬프트 템플릿
+        self.context_template = CHAT_CONTEXT_KR  # 이전 채팅 내역 첨부를 위한 템플릿
 
         # 모델 config 값 설정
         self.temperature = temperature
