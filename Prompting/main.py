@@ -1,37 +1,28 @@
-"""
-FastAPI를 사용하여 회의 안건 생성 및 요약 기능을 제공하는 웹 서버 애플리케이션 구현.
+# MindSync AI Server: FastAPI 기반 회의 지원 서비스
 
-주요 기능:
-    - Gemini API를 활용하여 회의 주제 요청에 따른 안건 생성
-    - Gemini API를 활용하여 회의록 요약 생성
-    - Gemini API를 활용하여 특정한 MBTI 성향의 가상 회의 참여자 채팅 생성
-"""
+import logging
+
+from fastapi import FastAPI, Depends
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+
 from Prompting.model import RoomIdRequest, ChatGenRequest, AgendaGenRequest, Response
 from Prompting.repository import AgendaRepository, ChatRepository, ChatRoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
 from Prompting.utils import MeetingDataLoader
-from fastapi import FastAPI, Depends
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from Prompting.exceptions.errors import GeminiError, MongoAccessError, DataLoaderError
+
+from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError
 from Prompting.exceptions.decorators import catch_and_raise
-from Prompting.exceptions.handlers import (
-    general_exception_handler,
-    request_validation_exception_handler,
-    gemini_exception_handler,
-    mongo_exception_handler,
-    dataloader_exception_handler
-)
-import logging
+from Prompting.exceptions.handlers import custom_exception_handler, request_validation_exception_handler, general_exception_handler
+
 
 # -------------------- 기본 설정 ------------------------
 logging.basicConfig(level=logging.INFO)  # 로깅 설정
 app = FastAPI()  # FastAPI 애플리케이션 생성
 
 # -------------------- 전역 핸들러 등록 --------------------
-app.add_exception_handler(GeminiError, gemini_exception_handler)
-app.add_exception_handler(MongoAccessError, mongo_exception_handler)
-app.add_exception_handler(DataLoaderError, dataloader_exception_handler)
+for exc in [GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError]:
+    app.add_exception_handler(exc, custom_exception_handler)
 app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
@@ -85,7 +76,7 @@ async def generate_and_save_agendas(
     """
 
     # 1. 안건 생성 (Gemini 호출)
-    @catch_and_raise("Gemini 안건 생성", GeminiError)
+    @catch_and_raise("Gemini 안건 생성", GeminiCallError)
     async def generate_agendas():
         agenda_list = await agenda_service.generate_agenda(request.roomId, request.description)
         agendas = agenda_service.parse_response_to_agenda_data(agenda_list)  # DB 저장형식으로 변환
@@ -126,13 +117,13 @@ async def summarize_meeting_chat(
         return room_data, agenda_data, user_info_list, chat_data
 
     # 2. 회의 데이터 재구성 객체 초기화
-    @catch_and_raise("DataLoader 생성", DataLoaderError)
+    @catch_and_raise("DataLoader 생성", PromptBuildError)
     async def build_dataloader(room_data, agenda_data, user_info_list, chat_data):
         dataloader = create_dataloader(room_data, agenda_data, user_info_list, chat_data)
         return dataloader
 
     # 3. 요약 생성 (Gemini 호출)
-    @catch_and_raise("Gemini 요약 생성", GeminiError)
+    @catch_and_raise("Gemini 요약 생성", GeminiCallError)
     async def generate_summary(dataloader):
         summary_list = await summarizer.generate_summary(dataloader)
         summary_dict = summarizer.parse_response_to_summary_data(summary_list)
@@ -182,7 +173,7 @@ async def generate_mbti_chat(
         return agenda_data, chat_data, room_data, user_info_list
 
     # 2. DataLoader 생성
-    @catch_and_raise("DataLoader 생성", DataLoaderError)
+    @catch_and_raise("DataLoader 생성", PromptBuildError)
     async def build_dataloader(room_data, agenda_data, user_info_list, chat_data):
         dataloader = create_dataloader(room_data, agenda_data, user_info_list, chat_data)
         if not dataloader.ai_mbti:
@@ -190,7 +181,7 @@ async def generate_mbti_chat(
         return dataloader
 
     # 3. Gemini 챗 생성
-    @catch_and_raise("Gemini 챗 생성", GeminiError)
+    @catch_and_raise("Gemini 챗 생성", GeminiCallError)
     async def generate_chat(dataloader, mbti):
         return await bot.generate_chat(dataloader, mbti, request.agendaId)
 
