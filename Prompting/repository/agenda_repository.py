@@ -18,12 +18,13 @@ class AgendaRepository:
         Returns:
             MongoDB에 저장된 안건 문서의 `_id` 필드 (문자열 형태)
         """
-        doc = {
-            "roomId": room_id,
-            "agendas": agenda_dict
-        }
-        result = await self.collection.insert_one(doc)
-        return str(result.inserted_id)
+        result = await self.collection.update_one(
+            {"_id": ObjectId(room_id)},  # 검색 기준
+            {"$set": {"roomId": room_id, "agendas": agenda_dict}},  # 갱신 필드
+            upsert=True  # 없으면 새로 insert
+        )
+        if result.modified_count == 0:
+            raise MongoAccessError("회의 안건 저장 실패")
 
     @catch_and_raise("MongoDB 안건 조회", MongoAccessError)
     async def get_agenda_by_room(self, room_id: str) -> dict:
