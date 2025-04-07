@@ -2,7 +2,7 @@
 from Prompting.repository import ChatRepository, RoomRepository, UserRepository, AgendaRepository
 from Prompting.usecases.usecase_utils import load_meeting_room_info, load_participants_info
 from Prompting.usecases.meeting_context import MeetingContext, ChatLog
-from Prompting.exceptions import catch_and_raise, MongoAccessError, GeminiCallError
+from Prompting.exceptions import catch_and_raise, MongoAccessError
 
 
 @catch_and_raise("MongoDB 데이터 로딩", MongoAccessError)
@@ -44,12 +44,3 @@ async def load_summary_context(
         chats=chats
     )
 
-@catch_and_raise("Gemini 요약 생성", GeminiCallError)
-async def generate_summary(dataloader, summarizer):
-    summary_list = await summarizer.generate_summary(dataloader)
-    summary_dict = summarizer.parse_response_to_summary_data(summary_list)
-    return summary_dict
-
-@catch_and_raise("MongoDB 데이터 저장", MongoAccessError)
-async def save_summary(request, summary_dict, room_repo):
-    await room_repo.save_summary(request.roomId, summary_dict)
