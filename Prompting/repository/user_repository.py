@@ -18,12 +18,4 @@ class UserRepository:
             사용자 정보가 담긴 dict 객체 리스트
         """
         cursor = self.collection.find({"email": {"$in": emails}})
-        users = await cursor.to_list(length=len(emails))
-
-        return [
-            {
-                "email": user.get("email", ""),
-                "name": user.get("username", "")
-            }
-            for user in users
-        ]
+        return await cursor.to_list(length=None)
