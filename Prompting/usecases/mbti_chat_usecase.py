@@ -54,6 +54,6 @@ async def load_chat_context(
 
 
 @catch_and_raise("Gemini 챗 생성", GeminiCallError)
-async def generate_chat(request, dataloader, mbti, bot):
-    return await bot.generate_chat(dataloader, mbti, request.agendaId)
+async def generate_chat(request, history_builder, mbti, bot):
+    return await bot.generate_chat(history_builder, mbti, request.agendaId)
 

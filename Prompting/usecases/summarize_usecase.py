@@ -45,8 +45,8 @@ async def load_summary_context(
     )
 
 @catch_and_raise("Gemini 요약 생성", GeminiCallError)
-async def generate_summary(dataloader, summarizer):
-    summary_list = await summarizer.generate_summary(dataloader)
+async def generate_summary(history_builder, summarizer):
+    summary_list = await summarizer.generate_summary(history_builder)
     summary_dict = summarizer.parse_response_to_summary_data(summary_list)
     return summary_dict
 

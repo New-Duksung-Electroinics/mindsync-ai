@@ -9,13 +9,12 @@ from fastapi.exceptions import RequestValidationError
 from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Response, ChatResponse
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
-from Prompting.utils import MeetingDataLoader
+from Prompting.services.context_builders.meeting_history_builder import MeetingHistoryBuilder
 from Prompting.usecases.agenda_usecase import generate_agendas, save_agendas
 from Prompting.usecases.summarize_usecase import load_summary_context, generate_summary, save_summary
 from Prompting.usecases.mbti_chat_usecase import load_chat_context, generate_chat
 
 from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError
-from Prompting.exceptions.decorators import catch_and_raise
 from Prompting.exceptions.handlers import custom_exception_handler, request_validation_exception_handler, general_exception_handler
 
 
@@ -97,14 +96,14 @@ async def summarize_meeting_chat(
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
     meeting_context = await load_summary_context(request.roomId, chat_repo, agenda_repo, room_repo, user_repo)
-    dataloader = MeetingDataLoader(
+    history_builder = MeetingHistoryBuilder(
         topic=meeting_context.topic,
         agendas=meeting_context.agendas,
         host=meeting_context.host,
         participants=meeting_context.participants,
         chat_logs=meeting_context.chats
     )
-    summary = await generate_summary(dataloader, summarizer)
+    summary = await generate_summary(history_builder, summarizer)
     await save_summary(request, summary, room_repo)
 
     return success_response(data=summary, message="요약 생성을 완료했습니다.")
@@ -134,18 +133,18 @@ async def generate_mbti_chat(
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
     meeting_context = await load_chat_context(request, chat_repo, agenda_repo, room_repo, user_repo)
-    dataloader = MeetingDataLoader(
+    history_builder = MeetingHistoryBuilder(
         topic=meeting_context.topic,
         agendas=meeting_context.agendas,
         host=meeting_context.host,
         participants=meeting_context.participants,
         chat_logs=meeting_context.chats
     )
-    mbti = dataloader.ai_mbti
+    mbti = history_builder.ai_mbti
     if not mbti:
         raise PromptBuildError()
 
-    chat = await generate_chat(request, dataloader, mbti, bot)
+    chat = await generate_chat(request, history_builder, mbti, bot)
     response = ChatResponse(
         roomId=request.roomId,
         name=mbti,

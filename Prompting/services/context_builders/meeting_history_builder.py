@@ -12,10 +12,10 @@ import re
 from Prompting.usecases.meeting_context import ChatLog, UserInfo
 
 
-class MeetingDataLoader:
+class MeetingHistoryBuilder:
     def __init__(self, topic: str, agendas: dict, host: str, participants: list[UserInfo], chat_logs: list[ChatLog]):
         """
-        MeetingDataLoader 클래스 생성자
+        MeetingHistoryBuilder 클래스 생성자
         """
         self.topic = topic          # 회의 주제
         self.agendas = agendas      # 회의 안건들(번호-주제 쌍)

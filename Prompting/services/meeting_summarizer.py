@@ -5,7 +5,7 @@ Gemini API를 사용하여 회의록을 요약하는 클래스
 안건별 주요 내용 정리는 각 발언자의 의견과 태도를 정리하는 형식으로 생성.
 생성된 요약은 JSON 형식으로 반환.
 """
-from .GeminiClient import GeminiClient
+from .gemini_client import GeminiClient
 from google.genai import types
 
 INPUT_TOKEN_LIMIT = 1048576     # Limit of Gemini 2.0 flash 입력 토큰 제한 수
@@ -103,16 +103,16 @@ class MeetingSummarizer:
         token_cnt = self.client.count_tokens(text).total_tokens
         return token_cnt
 
-    async def generate_summary(self, dataloader):
+    async def generate_summary(self, history_builder):
         """
         Gemini API를 사용하여 회의 요약을 생성.
         채팅 내역이 길어질 시 분할 처리가 필요할 수 있으므로 다수의 요청을 처리하여 응답을 병합할 수 있도록 구현.
 
-        :param dataloader: 회의 채팅 내역 데이터 로더 객체, MeetingDataLodaer
+        :param history_builder: 회의 채팅 내역 데이터 로더 객체, MeetingDataLodaer
         :return: 생성된 회의 요약 데이터, JSON 형식 (안건별 요약 dict가 담긴 list)
         """
         # 채팅 내역 텍스트를 목록으로 준비(토큰 수 제한 고려해 필요 시 분할 처리)
-        chat_history = dataloader.process_chat_history_for_prompt(count_tokens_callback=self.count_tokens,
+        chat_history = history_builder.process_chat_history_for_prompt(count_tokens_callback=self.count_tokens,
                                                                   token_alloc=self.chat_history_token_alloc)
         result = []
         prompts = self.generate_prompts(chat_history)   # 요청 프롬프트 목록을 생성
