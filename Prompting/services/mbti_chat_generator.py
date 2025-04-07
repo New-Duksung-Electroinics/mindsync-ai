@@ -53,7 +53,7 @@ class MbtiChatGenerator():
             topic=topic,
             sub_topic=sub_topic,
             hangul_length_limit=hangul_length_limit,
-            mbti_info=self.trait_builder.process_mbti_info_for_prompt(mbti),
+            mbti_info=self.trait_builder.build_trait_summary(mbti),
         )
 
         if int(step) > 1:  # 첫 안건이 아니면, 직전 안건 대화 context를 함께 전달

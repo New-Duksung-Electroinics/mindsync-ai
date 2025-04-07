@@ -1,64 +1,58 @@
-"""
-MBTI 유형별 정보를 제공하는 클래스
-
-JSON 형식의 MBTI 유형별 정보를 로드하고, 주어진 MBTI 유형에 대한 종합적인 소개, 강점, 약점에 대한 문자열을 제공.
-Gemini API 프롬프트 생성을 위한 MBTI 관련 정보를 구성하는데 활용하는 것이 목적.
-"""
 import json
 import os
+from typing import Optional
+from Prompting.exceptions.errors import PromptBuildError
+
 
 class MbtiTraitBuilder:
-    def __init__(self, instruction_file_path=None):
+    def __init__(self, instruction_file_path: Optional[str] = None):
         """
-        MbtiTraitBuilder 클래스 생성자.
-        JSON 파일에서 MBTI 유형별 정보를 로드하여 내부 데이터 구조에 저장.
+        프롬프트 빌드에 필요한 MBTI 유형 정보 문자열을 처리하는 클래스
 
-        :param instruction_file_path: MBTI 정보가 담긴 JSON 파일의 경로, str
+        Args:
+            instruction_file_path: MBTI 정보가 담긴 JSON 파일의 경로
         """
+        # 호출 시 특별히 지정한 설명 파일이 없으면 기본 파일 채택
         if not instruction_file_path:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             instruction_file_path = os.path.join(base_dir, "mbti_type_instructions.json")
 
-        with open(instruction_file_path, 'r', encoding="utf-8") as f:  # MBTI 정보가 담긴 JSON 파일 읽기
-            file_string = f.read()  # 파일 내용 읽기
-        self.data = json.loads(file_string)  # JSON 문자열 파싱하여 데이터 로드
+        with open(instruction_file_path, 'r', encoding="utf-8") as f:
+            self.instructions = json.loads(f.read())
 
-    def process_mbti_info_for_prompt(self, mbti):
+    def build_trait_summary(self, mbti: str) -> str:
         """
-        Gemini API 프롬프트 생성을 위한 MBTI 정보를 문자열로 구성.
+        MBTI 정보를 프롬프트용 문자열로 조립.
+        데이터의 각 key-value를 개별 section으로 조립해 유연하게 문자열 구성.
 
-        :param mbti: MBTI 유형 (예: "ISTJ", "ENFP")
-        :return: MBTI 유형에 대한 소개, 강점, 약점을 포함하는 문자열
+        Args:
+            mbti: MBTI 유형 문자열 (예: "INFP")
+
+        Returns:
+            Args로 전달한 MBTI의 성향 정보 문자열
+
+        Raises:
+            PromptBuildError: 해당 MBTI 유형에 대한 정보 검색에 실패할 경우
         """
-        introduction = "- Overall Introduction: \n" + self.get_introduction(mbti)  # MBTI 소개
-        strengths = "- Strengths: \n" + self.get_strengths(mbti)  # MBTI 강점
-        weakness = "- Weaknesses: \n" + self.get_weakness(mbti)  # MBTI 약점
+        profile = self.instructions.get(mbti, {})
+        if not profile:
+            raise PromptBuildError()
 
-        return '\n'.join([introduction, strengths, weakness])  # 문자열 결합하여 반환
+        blocks = []
+        for section, text in profile.items():
+            section_title = self._convert_section_title(section)
+            blocks.append(f"- {section_title}:\n{text.strip()}")
 
-    def get_introduction(self, mbti):
-        """
-        주어진 MBTI 유형에 대한 소개를 반환.
+        return "\n\n".join(blocks)
 
-        :param mbti: MBTI 유형
-        :return: MBTI 소개 문자열
-        """
-        return self.data.get(mbti, {}).get("introduction", "")
+    def _convert_section_title(self, key: str) -> str:
 
-    def get_strengths(self, mbti):
-        """
-        주어진 MBTI 유형에 대한 약점을 반환.
+        """MBTI 정보 문자열의 Section별 제목 문자열 생성"""
 
-        :param mbti: MBTI 유형
-        :return: MBTI 약점 문자열
-        """
-        return self.data.get(mbti, {}).get("strengths", "")
-
-    def get_weakness(self, mbti):
-        """
-        주어진 MBTI 유형에 대한 약점을 반환.
-
-        :param mbti: MBTI 유형
-        :return: MBTI 약점 문자열
-        """
-        return self.data.get(mbti, {}).get("weakness", "")
+        # 사전 설정이 있는 key 값은 사전 설정된 제목 문자열로 매핑
+        mapping = {
+            "introduction": "Overall Introduction",
+            "strengths": "Strengths",
+            "weakness": "Weaknesses",
+        }
+        return mapping.get(key, key.capitalize())  # 그외 key 값은 capitalize 적용해 Section 제목화
