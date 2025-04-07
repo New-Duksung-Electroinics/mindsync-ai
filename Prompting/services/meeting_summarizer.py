@@ -7,27 +7,10 @@ Gemini API를 사용하여 회의록을 요약하는 클래스
 """
 from .gemini_client import GeminiClient
 from google.genai import types
+from .templates import SUMMARY_PROMPT_EN
+
 
 INPUT_TOKEN_LIMIT = 1048576     # Limit of Gemini 2.0 flash 입력 토큰 제한 수
-prompt_template = \
-    """
-Based on the following meeting logs, 
-summarize the main content of each agenda item in Korean. 
-Referring to the example given, summarize the main opinions and attitudes of each speaker related to the agenda, 
-and write a conclusion for each agenda item.
-
-Example:
-[
-    {{
-    "step": 1,
-    "sub_topic": "사내 커뮤니케이션 툴 도입",
-    "summary": "오지훈: 현재 이메일 및 메신저 혼용으로 인해 업무 커뮤니케이션이 비효율적이라며, 일원화된 협업 툴 도입이 필요하다고 주장.\n김민정: 기존 사용 중인 메신저와의 차별점을 분석하여 실질적인 효율성이 있는지 검토해야 하며, 도입 시 직원 교육이 필수라고 강조.\n정다은: 사내 커뮤니케이션 툴 도입으로 인한 기대 효과(업무 흐름 개선, 문서 공유 간소화 등)를 언급하며, 시범 도입 후 피드백을 반영하는 방안을 제안."
-    "conclusion": "내부 협업 강화를 위해 사내 커뮤니케이션 툴 도입 여부를 다음 회의에서 결정하기로 함.",
-    }}
-]
-
-Text: {chat_history}
-"""
 
 
 class MeetingSummarizer:
@@ -41,7 +24,7 @@ class MeetingSummarizer:
         :param max_output_tokens: 최대 출력 토큰 수 (기본값: 8192, 최댓값)
         """
         self.client = GeminiClient()  # Gemini API 클라이언트 초기화
-        self.template = prompt_template  # 회의록 생성을 위한 프롬프트 템플릿
+        self.template = SUMMARY_PROMPT_EN  # 회의록 생성을 위한 프롬프트 템플릿
         self.chat_history_token_alloc = INPUT_TOKEN_LIMIT - self.count_tokens(self.generate_prompt(''))  # 채팅 기록에 할당할 토큰 수 계산
 
         # 모델 config 값 설정
@@ -58,13 +41,13 @@ class MeetingSummarizer:
                 'required': [
                     'step',
                     'sub_topic',
-                    'summary',
+                    'key_statements',
                     'conclusion'
                 ],
                 'properties': {
                     'step': {'type': 'INTEGER'},  # 몇 번째 안건인지
                     'sub_topic': {'type': 'STRING'},  # 안건명
-                    'summary': {'type': 'STRING'},  # 논의 내용 요약
+                    'key_statements': {'type': 'STRING'},  # 논의 내용 요약
                     'conclusion': {'type': 'STRING'},  # 논의 결론
                 }
             },
@@ -133,19 +116,17 @@ class MeetingSummarizer:
     def parse_response_to_summary_data(self, response):
         summary_list = []
         for data in response:
-            step = data.get("step", -1)
+            step = data.get("step", '')
             sub_topic = data.get("sub_topic", '')
             conclusion = data.get("conclusion", '')
-            highlights = data.get("summary", '').split('\n')
-            indented_highlights = ''
-            for h in highlights:
-                indented_highlights += '\t' + h + '\n'
+            key_statements = data.get("key_statements", '').split('\n')
+            indented_key_statements = ''.join([f"\t{ks}\n" for ks in key_statements])
 
             title = f"{step}. {sub_topic}\n\n"
-            highlight_text = "주요 발언:\n" + indented_highlights
+            key_statements_text = "주요 발언:\n" + indented_key_statements
             conclusion_text = "결론:\n" + '\t' + conclusion
 
-            summary_content = highlight_text + conclusion_text
+            summary_content = key_statements_text + conclusion_text
             agenda_summary = {
                 "agendaId": step,
                 "topic": sub_topic,
