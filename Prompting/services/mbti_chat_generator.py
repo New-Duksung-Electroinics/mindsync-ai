@@ -76,7 +76,7 @@ class MbtiChatGenerator():
         """
         # 채팅 내역 텍스트를 목록으로 준비(토큰 수 제한 고려해 필요 시 분할 처리)
         topic = history_builder.topic
-        prev_chat_history = history_builder.process_chat_history_for_prompt()
+        prev_chat_history = history_builder.build_prompt_chunks()
         sub_topic = history_builder.agendas.get(step, '')
         prompt = self._generate_prompt(mbti, topic, step, sub_topic, prev_chat_history)
         config = types.GenerateContentConfig(
