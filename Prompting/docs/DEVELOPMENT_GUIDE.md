@@ -2,7 +2,7 @@
 
 > MindSync AI 백엔드 모듈(Prompting)의 구조, 스타일, 예외 처리 및 모듈화 전략 가이드
 
----
+<br/>
 
 ## ✍️ 코드 작성 스타일
 
@@ -35,7 +35,7 @@ def generate_agenda(self, topic_request: str) -> list[dict]:
     """
 ```
 
----
+<br/>
 
 ## 🧹 예외 처리 전략
 
@@ -59,8 +59,9 @@ async def save_summary(...):
 ```
 
 > 자세한 예외 처리는 `Prompting/exceptions/` 참조
+ 
 
----
+<br/>
 
 ## 📁 모듈 구조 전략
 
@@ -84,7 +85,8 @@ Prompting/
 - **context_builders**: 프롬프트용 context 빌더
 - **templates**: 프롬프트 템플릿 관리
 
----
+<br/>
+
 ## 🤝 Contribution
 
 현재는 Organization 내부 테스트용으로 사용되며, 외부 기여는 받지 않습니다.

@@ -2,7 +2,6 @@
 
 > 회의 지원 AI 기능을 Google Gemini API와 함께 구성한 핵심 모듈
 
----
 
 ## 📌 모듈 개요
 
@@ -13,7 +12,6 @@
 - **회의 요약 생성** (`MeetingSummarizer`)
 - **MBTI 기반 챗봇 채팅 생성** (`MbtiChatGenerator`)
 
----
 
 ## 📂 디렉토리 구조
 
@@ -47,7 +45,7 @@ Prompting/
 └── README.md            # (현재 문서)
 ```
 
----
+<br/>
 
 ## ⚙️ 주요 클래스
 
@@ -61,7 +59,7 @@ Prompting/
 | `repository/`       | `ChatRepository`, ...       | MongoDB 데이터 접근 객체      |
 | `usecases/`         | `load_summary_context`, ... | 데이터 흐름과 도메인 객체 조합 로직   |
 
----
+<br/>
 
 ## 🔑 환경 변수 설정 (.env)
 
@@ -70,12 +68,13 @@ GEMINI_API_KEY=your-google-api-key
 MONGO_URI=mongodb://...
 ```
 
----
 ## 🚀 실행 예시
 ```bash
 uvicorn Prompting.main:app --host 0.0.0.0 --port 8000
 ```
----
+
+<br/>
+
 ## 📚 문서 모음
 
 | 문서                                                      | 설명                        |
