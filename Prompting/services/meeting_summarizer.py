@@ -83,7 +83,7 @@ class MeetingSummarizer:
         :param text: 토큰 수를 계산할 텍스트, str
         :return: 텍스트의 토큰 수, int
         """
-        token_cnt = self.client.count_tokens(text).total_tokens
+        token_cnt = self.client.count_tokens(text)
         return token_cnt
 
     async def generate_summary(self, history_builder):
