@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
-from Prompting.model import RoomIdRequest, ChatGenRequest, AgendaGenRequest, Response
+from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Response, ChatResponse
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
 from Prompting.utils import MeetingDataLoader
@@ -64,7 +64,7 @@ def get_user_repo():
 # -------------------- 엔드포인트 --------------------
 @app.post("/agenda_generation/", response_model=Response)
 async def generate_and_save_agendas(
-        request: AgendaGenRequest,
+        request: AgendaRequest,
         agenda_service: AgendaGenerator = Depends(get_agenda_service),
         agenda_repo: AgendaRepository = Depends(get_agenda_repo)
 ):
@@ -144,7 +144,7 @@ async def summarize_meeting_chat(
 
 @app.post("/mbti_chat/", response_model=Response)
 async def generate_mbti_chat(
-        request: ChatGenRequest,
+        request: ChatRequest,
         bot: MbtiChatGenerator = Depends(get_bot_service),
         chat_repo: ChatRepository = Depends(get_chat_repo),
         room_repo: RoomRepository = Depends(get_room_repo),
@@ -188,14 +188,13 @@ async def generate_mbti_chat(
     dataloader = await build_dataloader(room_data, agenda_data, user_info_list, chat_data)
     mbti = dataloader.ai_mbti
     chat = await generate_chat(dataloader, mbti)
-
-    response = {
-        "roomId": request.roomId,
-        "name": mbti,
-        "email": f"{mbti.lower()}@ai.com",
-        "message": chat,
-        "agenda_id": request.agendaId
-    }
+    response = ChatResponse(
+        roomId=request.roomId,
+        name=mbti,
+        email=f"{mbti.lower()}@ai.com",
+        message=chat,
+        agenda_id=request.agendaId
+    )
     return success_response(data=response, message="MBTI 봇의 채팅 생성을 완료했습니다.")
 
 @app.get("/")
