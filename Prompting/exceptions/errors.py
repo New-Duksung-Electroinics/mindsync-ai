@@ -1,18 +1,15 @@
-"""
-커스텀 예외 정의
-"""
+# 커스텀 예외 정의
+from .base import BaseCustomError
 
-class GeminiError(Exception):
-    def __init__(self, message="Gemini 호출 또는 응답 파싱 중 오류가 발생했습니다."):
-        self.message = message
-        super().__init__(self.message)
+class GeminiCallError(BaseCustomError):
+    status_code = 502
+    message = "Gemini API 호출 중 오류가 발생했습니다."
 
-class MongoAccessError(Exception):
-    def __init__(self, message="MongoDB 접근 중 오류가 발생했습니다."):
-        self.message = message
-        super().__init__(self.message)
+class GeminiParseError(BaseCustomError):
+    message = "Gemini 응답을 처리하는 중 오류가 발생했습니다."
 
-class DataLoaderError(Exception):
-    def __init__(self, message="DataLoader 생성 중 오류가 발생했습니다."):
-        self.message = message
-        super().__init__(self.message)
+class MongoAccessError(BaseCustomError):
+    message = "MongoDB 접근 중 오류가 발생했습니다."
+
+class PromptBuildError(BaseCustomError):
+    message = "프롬프트 빌드 중 서버 내부 오류가 발생했습니다."
