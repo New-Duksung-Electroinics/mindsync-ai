@@ -4,15 +4,20 @@ FROM python:3.9
 # 2. 작업 디렉토리 설정
 WORKDIR /app
 
-# 3. .env.template을 컨테이너 내부로 복사 (EC2에서 이 파일을 수정해 직접 .env 생성)
+# 3. .env.template을 컨테이너 내부로 복사 (실행 시 직접 .env 생성하도록 설정 필요)
 COPY .env.template /app/.env.template
 
-# 5. 의존성 파일 복사 및 설치
+# 4. 의존성 파일 복사 및 설치
 COPY ./Prompting/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. FastAPI 앱 코드 복사
+# 5. FastAPI 앱 및 스크립트 복사
 COPY ./Prompting /app/Prompting
+COPY ./scripts /app/scripts
 
-# 7. Uvicorn 실행 (reload 포함)
-CMD ["uvicorn", "Prompting.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 6. entrypoint.sh 복사 및 실행 권한 부여
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# 7. entrypoint 실행
+CMD ["/app/entrypoint.sh"]

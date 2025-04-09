@@ -9,7 +9,7 @@ import json
 
 # 파일 생성을 위한 설정 값
 file_name = "context1.txt"  # 읽어올 원본 파일명
-json_file_name = "meeting_log_sample_2.json"  # 저장할 json 파일명
+json_file_name = "../data/meeting_log_sample_2.json"  # 저장할 json 파일명
 created_by = "ChatGPT(GPT-4o mini)"  # 생성자 정보 (ChatGPT(GPT-4o mini) 또는 Gemini Flash 2.0)
 moderator_name = "김철수"  # 회의 진행자 이름
 split_all_sentences = True  # 모든 발언을 문장 단위로 분리하여 별개의 채팅으로 저장할지 여부
