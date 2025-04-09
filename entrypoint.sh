@@ -9,7 +9,7 @@ chmod 400 /app/.env
 
 # 2. 테스트 데이터 삽입 (이미 존재 시 건너뜀)
 echo "📦 Checking test data..."
-python /app/Prompting/scripts/insert_test_data.py
+PYTHONPATH=/app python /app/Prompting/scripts/insert_test_data.py
 
 # 3. FastAPI 서버 실행
 echo "🚀 Starting FastAPI server..."
