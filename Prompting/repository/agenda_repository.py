@@ -1,5 +1,4 @@
 from .mongo_client import db, AGENDA_COLLECTION
-from bson import ObjectId
 from Prompting.exceptions import MongoAccessError, catch_and_raise
 
 class AgendaRepository:
@@ -19,7 +18,7 @@ class AgendaRepository:
             MongoDB에 저장된 안건 문서의 `_id` 필드 (문자열 형태)
         """
         result = await self.collection.update_one(
-            {"_id": ObjectId(room_id)},  # 검색 기준
+            {"_id": room_id},  # 검색 기준
             {"$set": {"roomId": room_id, "agendas": agenda_dict}},  # 갱신 필드
             upsert=True  # 없으면 새로 insert
         )
@@ -29,5 +28,4 @@ class AgendaRepository:
     @catch_and_raise("MongoDB 안건 조회", MongoAccessError)
     async def get_agenda_by_room(self, room_id: str) -> dict:
         """채팅방 ID를 기반으로 해당 방의 안건 데이터를 검색"""
-        object_id = ObjectId(room_id)
-        return await self.collection.find_one({"roomId": object_id})
+        return await self.collection.find_one({"roomId": room_id})
