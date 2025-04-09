@@ -16,7 +16,7 @@ COPY ./Prompting /app/Prompting
 COPY ./scripts /app/scripts
 
 # 6. entrypoint.sh 복사 및 실행 권한 부여
-COPY entrypoint.sh /app/entrypoint.sh
+COPY ./entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # 7. entrypoint 실행
