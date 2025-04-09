@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 5. FastAPI 앱 및 스크립트 복사
 COPY ./Prompting /app/Prompting
-COPY ./scripts /app/scripts
+COPY ./Prompting/scripts /app/scripts
 
 # 6. entrypoint.sh 복사 및 실행 권한 부여
 COPY ./Prompting/entrypoint.sh /app/entrypoint.sh
