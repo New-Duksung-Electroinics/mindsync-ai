@@ -9,6 +9,7 @@ chmod 400 /app/.env
 
 # 2. 테스트 데이터 삽입 (이미 존재 시 건너뜀)
 echo "📦 Checking test data..."
+PYTHONPATH=/app python /app/Prompting/scripts/remove_test_data.py  # import 경로 때문에 PYTHONPATH 지정 필요
 PYTHONPATH=/app python /app/Prompting/scripts/insert_test_data.py
 
 # 3. FastAPI 서버 실행
