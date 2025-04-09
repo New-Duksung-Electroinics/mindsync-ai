@@ -84,15 +84,12 @@ jobs:
 
             # Docker 이미지 업데이트 및 컨테이너 실행
             echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker pull ${{ env.DOCKER_IMAGE_NAME }}:latest
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-ai-container -d -p 20:8000 -e TZ=Asia/Seoul \
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-ai-container -d -p 20:8000 \
+              -e TZ=Asia/Seoul \
+              -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
+              -e MONGO_URI=${{ secrets.MONGO_URI }} \
               -v $LOG_DIR/app.log:/app/logs \
-              ${{ env.DOCKER_IMAGE_NAME }}:latest sh -c "
-                cp /app/.env.template /app/.env &&
-                sed -i 's|REPLACE_WITH_GEMINI_API_KEY|${{ secrets.GEMINI_API_KEY }}|g' /app/.env &&
-                sed -i 's|REPLACE_WITH_MONGO_URI|${{ secrets.MONGO_URI }}|g' /app/.env &&
-                chmod 400 /app/.env &&  # 보안 강화를 위해 읽기 전용
-                exec uvicorn Prompting.main:app --host 0.0.0.0 --port 8000 --reload
-              "
+              ${{ env.DOCKER_IMAGE_NAME }}:latest
 
             # 배포 후 컨테이너 로그 출력
             sleep 3  # 컨테이너가 완전히 실행될 때까지 대기
