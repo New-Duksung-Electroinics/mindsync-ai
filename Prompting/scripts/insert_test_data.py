@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 import json
 
-JSON_FILE_PATH = "./data/meeting_log_sample_2.json"  # 회의 채팅 내역 샘플 데이터 파일 경로
+JSON_FILE_PATH = "./Prompting/scripts/data/meeting_log_sample_2.json"  # 회의 채팅 내역 샘플 데이터 파일 경로
 BOT_MBTI = "ENFP"
 TEST_ROOM_ID = "TEST_ROOM_ID"
 
