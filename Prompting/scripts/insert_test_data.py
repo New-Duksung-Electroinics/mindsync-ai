@@ -2,8 +2,10 @@ from Prompting.repository.mongo_client import MONGO_URI, ROOM_COLLECTION, CHAT_C
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 import json
+import os
 
-JSON_FILE_PATH = "./Prompting/scripts/data/meeting_log_sample_2.json"  # 회의 채팅 내역 샘플 데이터 파일 경로
+base_dir = os.path.dirname(os.path.abspath(__file__))
+JSON_FILE_PATH = os.path.join(base_dir, "./data/meeting_log_sample_2.json")  # 회의 채팅 내역 샘플 데이터 파일 경로
 BOT_MBTI = "ENFP"
 TEST_ROOM_ID = "TEST_ROOM_ID"
 
@@ -11,7 +13,7 @@ client = MongoClient(MONGO_URI)
 db = client[MONGO_DB_NAME]
 
 def already_inserted():
-    return db[ROOM_COLLECTION].find_one({"meta.version": "v1"}) is not None
+    return db[ROOM_COLLECTION].find_one({"_id": TEST_ROOM_ID}) is not None
 
 def insert_chatroom(title, content, host, participants, mbti=BOT_MBTI):
     chatroom = {
