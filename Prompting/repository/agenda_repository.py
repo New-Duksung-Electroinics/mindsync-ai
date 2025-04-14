@@ -22,8 +22,13 @@ class AgendaRepository:
             {"$set": {"roomId": room_id, "agendas": agenda_dict}},  # 갱신 필드
             upsert=True  # 없으면 새로 insert
         )
+
         if result.modified_count == 0:
-            raise MongoAccessError("회의 안건 저장 실패")
+            if result.upserted_id is not None:
+                print(f"새로 insert된 문서 ID: {result.upserted_id}")
+            else:
+                raise MongoAccessError("회의 안건 저장 실패")
+
 
     @catch_and_raise("MongoDB 안건 조회", MongoAccessError)
     async def get_agenda_by_room(self, room_id: str) -> dict:
