@@ -26,4 +26,7 @@ class RoomRepository:
             {"$set": {"summary": summary}}
         )
         if result.modified_count == 0:
-            raise MongoAccessError("회의 요약 저장 실패")
+            if result.upserted_id is not None:
+                print(f"새로 insert된 문서 ID: {result.upserted_id}")
+            else:
+                raise MongoAccessError("회의 요약 저장 실패")
