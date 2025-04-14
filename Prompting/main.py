@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI, Depends
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 
 from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Response
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
@@ -26,6 +27,20 @@ from .di import (
 # 기본 설정 및 예외 핸들러 등록 ------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO)  # 로깅 설정
 app = FastAPI()  # FastAPI 애플리케이션 생성
+
+# 허용할 origin 지정
+origins = [
+    "http://localhost:3000",  # (개발용) 프론트엔드 주소 -> 배포 시 도메인 주소로 변경
+]
+
+# ✅ CORS 미들웨어 등록
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # or ["*"] (모두 허용)
+    allow_credentials=True,
+    allow_methods=["*"],    # or ["POST", "GET"]
+    allow_headers=["*"],
+)
 
 for exc in [GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError]:
     app.add_exception_handler(exc, custom_exception_handler)
