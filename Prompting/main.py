@@ -26,7 +26,7 @@ from .di import (
 
 # 기본 설정 및 예외 핸들러 등록 ------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO)  # 로깅 설정
-app = FastAPI()  # FastAPI 애플리케이션 생성
+app = FastAPI(docs_url=None, redoc_url=None)  # FastAPI 애플리케이션 생성(Swagger UI 제거)
 
 # 허용할 origin 지정
 origins = [
