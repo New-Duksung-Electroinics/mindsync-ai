@@ -1,0 +1,45 @@
+name: Discord Notify
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    types: [closed]
+    branches:
+      - main  # main으로 머지된 PR만
+
+  issues:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Discord
+        uses: Ilshidur/action-discord@master
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          message: |
+            📣 **[${{ github.repository }}] 주요 업데이트**
+            
+            {% if github.event_name == 'push' %}
+            🔄 **Push to `main`**
+            - Author: `${{ github.actor }}`
+            - Commit: [{{ github.event.head_commit.message }}]({{ github.event.head_commit.url }})
+            {% endif %}
+
+            {% if github.event_name == 'pull_request' %}
+            ✅ **Pull Request Merged**
+            - Author: `${{ github.actor }}`
+            - Title: [{{ github.event.pull_request.title }}]({{ github.event.pull_request.html_url }})
+            - #${{ github.event.pull_request.number }} merged into `main`
+            {% endif %}
+
+            {% if github.event_name == 'issues' %}
+            🚨 **Issue ${{ github.event.action }}**
+            - Author: `${{ github.actor }}`
+            - Title: [{{ github.event.issue.title }}]({{ github.event.issue.html_url }})
+            - #${{ github.event.issue.number }}
+            {% endif %}
