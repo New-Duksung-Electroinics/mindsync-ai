@@ -1,0 +1,29 @@
+name: Notify Discord on main.yml result
+
+on:
+  workflow_run:
+    workflows: ["main"]
+    types:
+      - completed
+
+jobs:
+  discord-notify:
+    # 성공 or 실패일 때만 실행
+    if: |
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        uses: Ilshidur/action-discord@v1.0.0
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          message: |
+            📣 **[${{ github.repository }}] 배포 결과**
+
+            ⚙️ Workflow **`${{ github.event.workflow_run.name }}`** Completed
+            - Result: {% if github.event.workflow_run.conclusion == 'success' %}Success ✅{% endif %}
+           {% if github.event.workflow_run.conclusion == 'failure' %}Failure ❌{% endif %}
+            - Branch: `${{ github.event.workflow_run.head_branch }}`
+            - Author: `${{ github.event.workflow_run.head_commit.author.name }}`
+            - 🔗 [View run](${{ github.event.workflow_run.html_url }})
