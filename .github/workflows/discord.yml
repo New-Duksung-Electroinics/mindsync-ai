@@ -20,26 +20,25 @@ jobs:
       - name: Send message to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          EVENT_NAME: ${{ github.event_name }}
         uses: Ilshidur/action-discord@0c4b27844ba47cb1c7bee539c8eead5284ce9fa9
         with:
           args: |
             📣 **[{{ EVENT_PAYLOAD.repository.full_name }}] 주요 업데이트**
             
-            {% if EVENT_NAME == 'push' %}
+            {% if EVENT_PAYLOAD.head_commit %}
             🔄 **Push to `main`**
             - Author: `{{ EVENT_PAYLOAD.sender.login }}`
             - Commit: [{{ EVENT_PAYLOAD.head_commit.message }}]({{ EVENT_PAYLOAD.head_commit.url }})
             {% endif %}
 
-            {% if EVENT_NAME == 'pull_request' %}
+            {% if EVENT_PAYLOAD.pull_request %}
             ✅ **Pull Request Merged**
             - Author: `{{ EVENT_PAYLOAD.sender.login }}`
             - Title: [{{ EVENT_PAYLOAD.pull_request.title }}]({{ EVENT_PAYLOAD.pull_request.html_url }})
             - #{{ EVENT_PAYLOAD.pull_request.number }} merged into `main`
             {% endif %}
 
-            {% if EVENT_NAME == 'issues' %}
+            {% if EVENT_PAYLOAD.issue %}
             🚨 **Issue {{ EVENT_PAYLOAD.action }}**
             - Author: `{{ EVENT_PAYLOAD.sender.login }}`
             - Title: [{{ EVENT_PAYLOAD.issue.title }}]({{ EVENT_PAYLOAD.issue.html_url }})
