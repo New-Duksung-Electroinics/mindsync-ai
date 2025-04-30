@@ -2,7 +2,7 @@ name: Notify Discord on main.yml result
 
 on:
   workflow_run:
-    workflows: ["main"]
+    workflows: ["Deploy FastAPI to EC2"]
     types:
       - completed
 
@@ -20,12 +20,14 @@ jobs:
         uses: Ilshidur/action-discord@0c4b27844ba47cb1c7bee539c8eead5284ce9fa9
         with:
           args: |
-            📣 **[{{ EVENT_PAYLOAD.repository.full_name }}] 배포 결과**
-
-            ⚙️ Workflow **`{{ EVENT_PAYLOAD.workflow_run.name }}`** Completed
-            - Result: 
-              {% if EVENT_PAYLOAD.workflow_run.conclusion == 'success' %}Success ✅{% endif %}
-              {% if EVENT_PAYLOAD.workflow_run.conclusion == 'failure' %}Failure ❌{% endif %}
-            - Branch: `{{ EVENT_PAYLOAD.workflow_run.head_branch }}`
-            - Author: `{{ EVENT_PAYLOAD.workflow_run.head_commit.author.name }}`
-            - 🔗 [View run]({{ EVENT_PAYLOAD.workflow_run.html_url }})
+            <% if (EVENT_PAYLOAD.workflow_run.conclusion == 'success') { %>
+            ## ✅ Workflow **`{{ EVENT_PAYLOAD.workflow_run.name }}`** Succeeded
+            <% } else if (EVENT_PAYLOAD.workflow_run.conclusion == 'failure') { %>
+            ## ❌ Workflow **`{{ EVENT_PAYLOAD.workflow_run.name }}`** Failed
+            <% } %>
+            Executed on `{{ EVENT_PAYLOAD.workflow_run.head_branch }}` by `{{ EVENT_PAYLOAD.workflow_run.head_commit.author.name }}` 👩‍💻 (view [Run Details]({{ EVENT_PAYLOAD.workflow_run.html_url }}))
+            
+            **Head Commit**:
+            ```
+            {{ EVENT_PAYLOAD.workflow_run.head_commit.message }}
+            ```
