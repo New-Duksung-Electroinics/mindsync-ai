@@ -17,6 +17,10 @@ class AgendaRepository:
         Returns:
             MongoDB에 저장된 안건 문서의 `_id` 필드 (문자열 형태)
         """
+        # 마지막 요소로 추가 논의를 위한 예비 안건 추가
+        last_agenda_id = str(len(agenda_dict) + 1)
+        agenda_dict[last_agenda_id] = "예비 안건 (회의 중 추가 논의 시)"
+
         result = await self.collection.update_one(
             {"_id": room_id},  # 검색 기준
             {"$set": {"roomId": room_id, "agendas": agenda_dict}},  # 갱신 필드
