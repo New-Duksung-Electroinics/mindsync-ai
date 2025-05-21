@@ -1,6 +1,8 @@
 from .mongo_client import db, AGENDA_COLLECTION
 from Prompting.exceptions import MongoAccessError, catch_and_raise
 from Prompting.common import AgendaStatus
+from pymongo import ReturnDocument
+
 
 class AgendaRepository:
     def __init__(self):
@@ -46,3 +48,26 @@ class AgendaRepository:
     async def get_agenda_by_room(self, room_id: str) -> dict:
         """채팅방 ID를 기반으로 해당 방의 안건 데이터를 검색"""
         return await self.collection.find_one({"roomId": room_id})
+
+
+    @catch_and_raise("MongoDB 안건 상태 업데이트", MongoAccessError)
+    async def update_status(self, room_id: str, agenda_id: str, is_skipped: bool) -> dict:
+        """
+        안건 데이터에서 특정 안건의 논의 상태를 완료 또는 생략 상태로 업데이트
+
+        Args:
+            room_id: 채팅방 ObjectId
+            agenda_id: 상태를 수정할 안건 ID
+            is_skipped: 안건의 생략 여부. 생략이 아니면 완료로 처리
+        """
+        status = AgendaStatus.SKIPPED if is_skipped else AgendaStatus.COMPLETE
+        updated_agendas = await self.collection.find_one_and_update(
+            {"_id": room_id},
+            {"$set": {f"agendas.{agenda_id}.status": status.value}},
+            projection={"agendas": 1, "_id": 0},
+            return_document=ReturnDocument.AFTER  # 업데이트 후의 값을 반환
+        )
+        if updated_agendas is None:
+            raise MongoAccessError("안건 상태 업데이트 실패")
+
+        return updated_agendas["agendas"]

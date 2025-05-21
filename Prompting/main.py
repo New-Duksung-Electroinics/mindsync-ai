@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Response
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
-from Prompting.usecases import load_summary_context, load_chat_context
+from Prompting.usecases import load_summary_context, load_chat_context_and_update_agenda_status
 
 from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError
 from Prompting.exceptions.decorators import catch_and_raise
@@ -127,10 +127,10 @@ async def generate_mbti_chat(
     Returns:
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-    meeting_context = await load_chat_context(request, chat_repo, agenda_repo, room_repo, user_repo)
+    meeting_context = await load_chat_context_and_update_agenda_status(request, chat_repo, agenda_repo, room_repo, user_repo)
     chat_response = await bot.generate_chat(meeting_context=meeting_context, request=request)
 
-    return success_response(data=chat_response.dict(), message="MBTI 봇의 채팅 생성을 완료했습니다.")
+    return success_response(data=chat_response.model_dump(), message="MBTI 봇의 채팅 생성을 완료했습니다.")
 
 
 @app.get("/")
