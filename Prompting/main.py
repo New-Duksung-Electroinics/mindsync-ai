@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from Prompting.schemas import SummaryRequest, ChatRequest, AgendaRequest, Response
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
-from Prompting.usecases import load_summary_context, load_chat_context_and_update_agenda_status
+from Prompting.usecases import load_summary_context_and_update_agenda_status, load_chat_context_and_update_agenda_status
 
 from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError
 from Prompting.exceptions.decorators import catch_and_raise
@@ -96,7 +96,7 @@ async def summarize_meeting_chat(
     Returns:
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-    meeting_context = await load_summary_context(request.roomId, chat_repo, agenda_repo, room_repo, user_repo)
+    meeting_context = await load_summary_context_and_update_agenda_status(request, chat_repo, agenda_repo, room_repo, user_repo)
     summary = await summarizer.generate_summary(meeting_context)
     summary_data = summarizer.parse_response_to_summary_data(summary)
     await room_repo.save_summary(room_id=request.roomId, summary=summary_data)
