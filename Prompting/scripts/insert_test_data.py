@@ -56,7 +56,7 @@ def insert_agenda(roomId, agendas_dict):
         title = agendas_dict[aid]
         agendas_dict[aid] = {
             "title": title,
-            "status": AgendaStatus.COMPLETE.value
+            "status": AgendaStatus.PENDING.value
         }
     agenda = {
         "_id": roomId,
