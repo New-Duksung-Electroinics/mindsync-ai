@@ -52,7 +52,8 @@
 ### ✅ 요청 Body
 ```
 {
-  "roomId": "xxxxxxxxxxxxxxxxxxx"
+  "roomId": "xxxxxxxxxxxxxxxxxxx",
+  "is_last_agenda_skipped" : true   # 마지막 안건의 논의 생략 여부
 }
 ```
 
@@ -68,6 +69,11 @@
       "content": "주요 발언: ...\n결론: ..."
     },
     ...
+    {
+      "agendaId": "5",
+      "topic": "예비 안건 (회의 중 추가 논의 시)",
+      "content": null    # 논의가 생략된 안건의 요약은 null 처리
+    }
   ]
 }
 ```
@@ -82,7 +88,8 @@
 ```
 {
   "roomId": "string",
-  "agendaId": "2"
+  "agendaId": "2",
+  "is_previous_skipped" : false   # 직전 안건의 논의 생략 여부
 }
 ```
 ### 🔁 응답 예시
