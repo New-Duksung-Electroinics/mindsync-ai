@@ -7,7 +7,7 @@ from fastapi import FastAPI, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Response
+from Prompting.schemas import SummaryRequest, ChatRequest, AgendaRequest, Response
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
 from Prompting.usecases import load_summary_context, load_chat_context_and_update_agenda_status
@@ -75,7 +75,7 @@ async def generate_and_save_agendas(
 
 @app.post("/summarize/", response_model=Response)
 async def summarize_meeting_chat(
-        request: RoomIdRequest,
+        request: SummaryRequest,
         summarizer: MeetingSummarizer = Depends(get_summarizer_service),
         chat_repo: ChatRepository = Depends(get_chat_repo),
         room_repo: RoomRepository = Depends(get_room_repo),
