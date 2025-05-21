@@ -38,20 +38,22 @@ Google Gemini API를 활용해 다음과 같은 편의 기능을 제공합니다
 ```bash
 .
 ├── Dataset/            # (일시 중단) 전용 모델 학습을 위한 데이터셋 수집/전처리 폴더
-├── Prompting/              # AI 기반 회의 지원 백엔드 모듈
+├── Prompting/          # AI 기반 회의 지원 백엔드 모듈
+│   ├── common/             # 공통 유틸 함수 및 enum 클래스 정의
+│   ├── docs/               # Prompting 기반 백엔드 구조 설명, API 명세 등 문서
+│   ├── exceptions/         # 공통 예외 클래스 및 핸들러 정의
 │   ├── repository/         # MongoDB 연동
+│   ├── schemas/            # 요청 및 응답 데이터 구조 정의
+│   ├── scripts/            # 테스트 데이터 삽입 및 유틸리티 스크립트
 │   ├── services/           # Gemini 기반 기능 서비스 (agenda, summary, mbti_chat)
 │   ├── usecases/           # 도메인 중심 데이터 구성 및 흐름 처리
-│   ├── exceptions/         # 공통 예외 클래스 및 핸들러 정의
-│   ├── schemas/            # 요청 및 응답 데이터 구조 정의
 │   ├── di.py               # 의존성 주입 모듈
 │   ├── main.py             # FastAPI 진입점
 │   └── ...
-├── docs/                   # (선택) 구조 설명, API 명세 등 문서화
 ├── requirements.txt
 ├── .env.template
 ├── dockerfile
-└── README.md               # 루트 설명 파일
+└── README.md           # 루트 설명 파일
 ```
 
 <br/>

@@ -1,4 +1,5 @@
 from Prompting.repository.mongo_client import MONGO_URI, ROOM_COLLECTION, CHAT_COLLECTION, AGENDA_COLLECTION, USER_COLLECTION, MONGO_DB_NAME
+from Prompting.common.enums import AgendaStatus
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 import json
@@ -51,6 +52,14 @@ def insert_user(email, name, mbti="ISTJ", password="1234qwer!"):
     db[USER_COLLECTION].insert_one(chat)
 
 def insert_agenda(roomId, agendas_dict):
+    last_agenda_id = str(len(agendas_dict) + 1)
+    agendas_dict[last_agenda_id] = "예비 안건 (회의 중 추가 논의 시)"
+    for aid in agendas_dict:
+        title = agendas_dict[aid]
+        agendas_dict[aid] = {
+            "title": title,
+            "status": AgendaStatus.PENDING.value
+        }
     agenda = {
         "_id": roomId,
         "roomId": roomId,

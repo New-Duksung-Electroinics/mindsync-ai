@@ -12,28 +12,23 @@ class ChatRepository:
         cursor = self.collection.find({"roomId": room_id}).sort("timestamp", 1)
         return await cursor.to_list(length=1000)
 
-    @catch_and_raise("MongoDB 직전 안건 채팅 조회", MongoAccessError)
-    async def get_chat_logs_of_previous_agenda(self, room_id: str, current_agenda_id: str) -> list[dict]:
+    @catch_and_raise("MongoDB 지정 안건 채팅 조회", MongoAccessError)
+    async def get_chat_logs_by_agenda_id(self, room_id: str, agenda_id: str) -> list[dict]:
         """
-        현재 안건 ID 기준, 직전 안건의 채팅 기록을 시간 순으로 조회
+        특정 안건에 대한 채팅 기록을 시간 순으로 조회
 
         Args:
             room_id: 채팅방 ID
-            current_agenda_id: 현재 안건 ID
+            agenda_id: 채팅을 조회하려는 안건 ID
 
         Returns:
-            직전 안건에 해당하는 채팅 기록 리스트
+            특정 안건에 대한 채팅 기록 리스트
         """
 
-        try:  # 현재 agenda_id를 int로 변환 (str로 들어와도 대비)
-            current_agenda_num = int(current_agenda_id)
-        except ValueError:
-            raise ValueError("agenda_id는 숫자 형태의 문자열 또는 정수여야 합니다.")
-
-        # 해당 채팅방에서 current_agenda_id의 직전 안건에 대한 모든 chat을 시간 순으로 정렬해 불러오기
+        # 해당 채팅방에서 agenda_id 안건에 대한 모든 chat을 시간 순으로 정렬해 불러오기
         cursor = self.collection.find({
             "roomId": room_id,
-            "agenda_id": str(current_agenda_num - 1)  # MongoDB 저장이 str이라면
+            "agenda_id": agenda_id
         }).sort("timestamp", 1)
 
         return await cursor.to_list(length=1000)

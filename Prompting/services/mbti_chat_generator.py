@@ -97,8 +97,8 @@ class MbtiChatGenerator:
             mbti_info=mbti_info
         )
 
-        # 회의의 첫 안건이 아니면, 직전 안건 대화 context를 함께 전달
-        if step != min(history_builder.agendas.keys()):
+        # 유효한 직전 안건 대화 context가 존재할 시 함께 전달
+        if history_builder.chats:
             chunks = history_builder.build_prompt_chunks()
             if len(chunks) > 1:
                 raise PromptBuildError("의도치 않은 프롬프트 분할 발생")  # context 뭉치가 분할 처리되었으면 에러 발생시키기

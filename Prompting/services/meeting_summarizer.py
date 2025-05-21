@@ -8,6 +8,7 @@ from Prompting.exceptions.decorators import catch_and_raise
 from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError
 from .context_builders import MeetingHistoryBuilder
 from typing import cast
+from Prompting.common import AgendaStatus
 
 
 class MeetingSummarizer:
@@ -89,6 +90,23 @@ class MeetingSummarizer:
             response = self.client.generate_content(prompt_list[0], config)
             summary_data = response.parsed  # 단일 응답
 
+        agendas = meeting_context.agendas
+        included_ids = set()
+
+        for summary in summary_data:
+            aid = str(summary["step"])
+            summary["is_skipped"] = agendas[aid]["status"] == AgendaStatus.SKIPPED
+            included_ids.add(aid)
+
+        # 누락된 안건 추가
+        for aid, agenda in agendas.items():
+            if aid not in included_ids:
+                summary_data.append({
+                    "step": int(aid),
+                    "sub_topic": agenda["title"],
+                    "is_skipped": True
+                })
+
         return cast(list[dict], summary_data)
 
     @catch_and_raise("Gemini 요약 응답 파싱", GeminiParseError)
@@ -107,15 +125,22 @@ class MeetingSummarizer:
         for data in response:
             step = data.get("step", '')
             sub_topic = data.get("sub_topic", '')
-            conclusion = data.get("conclusion", '')
-            key_statements = data.get("key_statements", '').split('\n')
-            indented_key_statements = ''.join([f"\t{ks}\n" for ks in key_statements])
-
             title = f"{step}. {sub_topic}\n\n"
-            key_statements_text = "주요 발언:\n" + indented_key_statements
-            conclusion_text = "결론:\n" + '\t' + conclusion
 
-            summary_content = key_statements_text + conclusion_text
+            is_skipped = data.get("is_skipped", False)
+
+            if is_skipped:
+                summary_content = None
+            else:
+                conclusion = data.get("conclusion", '')
+                key_statements = data.get("key_statements", '').split('\n')
+                indented_key_statements = ''.join([f"\t{ks}\n" for ks in key_statements])
+
+                key_statements_text = "주요 발언:\n" + indented_key_statements
+                conclusion_text = "결론:\n" + '\t' + conclusion
+
+                summary_content = key_statements_text + conclusion_text
+
             agenda_summary = {
                 "agendaId": step,
                 "topic": sub_topic,
