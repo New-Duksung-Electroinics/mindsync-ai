@@ -42,6 +42,8 @@ Prompting/
 ├── schemas/             # 요청/응답 데이터 구조
 ├── exceptions/          # 공통 에러 및 핸들러
 ├── common/              # 편의를 위한 공통 모듈
+├── scripts/            # 테스트 데이터 삽입 및 유틸리티 스크립트
+├── docs/               # Prompting 모듈 관련 문서 모음
 └── README.md            # (현재 문서)
 ```
 
@@ -49,15 +51,15 @@ Prompting/
 
 ## ⚙️ 주요 클래스
 
-| 분류                  | 클래스                      | 설명                     |
-|---------------------|-----------------------------|------------------------|
-| `services/`         | `AgendaGenerator`           | 주제 기반 회의 안건 생성         |
-|                     | `MeetingSummarizer`         | 채팅 로그 기반 회의 요약 생성      |
-|                     | `MbtiChatGenerator`         | MBTI 성격 특징 기반 챗봇 발화 생성 |
-| `context_builders/` | `MeetingHistoryBuilder`     | 채팅 기록 → 프롬프트용 문자열 가공   |
-|                     | `MbtiTraitBuilder`          | MBTI 성향 요약 텍스트 구성      |
-| `repository/`       | `ChatRepository`, ...       | MongoDB 데이터 접근 객체      |
-| `usecases/`         | `load_summary_context`, ... | 데이터 흐름과 도메인 객체 조합 로직   |
+| 분류                  | 클래스                     | 설명                     |
+|---------------------|-------------------------|------------------------|
+| `services/`         | `AgendaGenerator`       | 주제 기반 회의 안건 생성         |
+|                     | `MeetingSummarizer`     | 채팅 로그 기반 회의 요약 생성      |
+|                     | `MbtiChatGenerator`     | MBTI 성격 특징 기반 챗봇 발화 생성 |
+| `context_builders/` | `MeetingHistoryBuilder` | 채팅 기록 → 프롬프트용 문자열 가공   |
+|                     | `MbtiTraitBuilder`      | MBTI 성향 요약 텍스트 구성      |
+| `repository/`       | `ChatRepository`, ...   | MongoDB 데이터 접근 객체      |
+| `usecases/`         | `MeetingContext`, ...   | 회의의 맥락 정보를 담는 컨텍스트 객체  |
 
 <br/>
 

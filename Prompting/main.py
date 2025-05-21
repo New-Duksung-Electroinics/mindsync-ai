@@ -7,10 +7,10 @@ from fastapi import FastAPI, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from Prompting.schemas import RoomIdRequest, ChatRequest, AgendaRequest, Response
+from Prompting.schemas import SummaryRequest, ChatRequest, AgendaRequest, Response
 from Prompting.repository import AgendaRepository, ChatRepository, RoomRepository, UserRepository
 from Prompting.services import AgendaGenerator, MeetingSummarizer, MbtiChatGenerator
-from Prompting.usecases import load_summary_context, load_chat_context
+from Prompting.usecases import load_summary_context_and_update_agenda_status, load_chat_context_and_update_agenda_status
 
 from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, MongoAccessError, PromptBuildError
 from Prompting.exceptions.decorators import catch_and_raise
@@ -67,15 +67,15 @@ async def generate_and_save_agendas(
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
     agenda_list = await agenda_service.generate_agenda(topic_request=request.description)
-    agendas = agenda_service.parse_response_to_agenda_data(response=agenda_list)
-    await agenda_repo.save_agenda(room_id=request.roomId, agenda_dict=agendas)
+    ai_agendas = agenda_service.parse_response_to_agenda_data(response=agenda_list)
+    db_agendas = await agenda_repo.save_agenda(room_id=request.roomId, agenda_dict=ai_agendas)
 
-    return success_response(data=agendas, message="안건 생성을 완료했습니다.")
+    return success_response(data=db_agendas, message="안건 생성을 완료했습니다.")
 
 
 @app.post("/summarize/", response_model=Response)
 async def summarize_meeting_chat(
-        request: RoomIdRequest,
+        request: SummaryRequest,
         summarizer: MeetingSummarizer = Depends(get_summarizer_service),
         chat_repo: ChatRepository = Depends(get_chat_repo),
         room_repo: RoomRepository = Depends(get_room_repo),
@@ -96,7 +96,7 @@ async def summarize_meeting_chat(
     Returns:
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-    meeting_context = await load_summary_context(request.roomId, chat_repo, agenda_repo, room_repo, user_repo)
+    meeting_context = await load_summary_context_and_update_agenda_status(request, chat_repo, agenda_repo, room_repo, user_repo)
     summary = await summarizer.generate_summary(meeting_context)
     summary_data = summarizer.parse_response_to_summary_data(summary)
     await room_repo.save_summary(room_id=request.roomId, summary=summary_data)
@@ -127,10 +127,10 @@ async def generate_mbti_chat(
     Returns:
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
-    meeting_context = await load_chat_context(request, chat_repo, agenda_repo, room_repo, user_repo)
+    meeting_context = await load_chat_context_and_update_agenda_status(request, chat_repo, agenda_repo, room_repo, user_repo)
     chat_response = await bot.generate_chat(meeting_context=meeting_context, request=request)
 
-    return success_response(data=chat_response.dict(), message="MBTI 봇의 채팅 생성을 완료했습니다.")
+    return success_response(data=chat_response.model_dump(), message="MBTI 봇의 채팅 생성을 완료했습니다.")
 
 
 @app.get("/")
