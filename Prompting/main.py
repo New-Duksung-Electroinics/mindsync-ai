@@ -67,10 +67,10 @@ async def generate_and_save_agendas(
         Response 형식의 JSONResponse (상세는 API 명세서에서 확인)
     """
     agenda_list = await agenda_service.generate_agenda(topic_request=request.description)
-    agendas = agenda_service.parse_response_to_agenda_data(response=agenda_list)
-    await agenda_repo.save_agenda(room_id=request.roomId, agenda_dict=agendas)
+    ai_agendas = agenda_service.parse_response_to_agenda_data(response=agenda_list)
+    db_agendas = await agenda_repo.save_agenda(room_id=request.roomId, agenda_dict=ai_agendas)
 
-    return success_response(data=agendas, message="안건 생성을 완료했습니다.")
+    return success_response(data=db_agendas, message="안건 생성을 완료했습니다.")
 
 
 @app.post("/summarize/", response_model=Response)

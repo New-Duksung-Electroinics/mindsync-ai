@@ -1,12 +1,13 @@
 from .mongo_client import db, AGENDA_COLLECTION
 from Prompting.exceptions import MongoAccessError, catch_and_raise
+from Prompting.common import AgendaStatus
 
 class AgendaRepository:
     def __init__(self):
         self.collection = db[AGENDA_COLLECTION]
 
     @catch_and_raise("MongoDB 안건 저장", MongoAccessError)
-    async def save_agenda(self, room_id: str, agenda_dict: dict) -> str:
+    async def save_agenda(self, room_id: str, agenda_dict: dict) -> dict:
         """
         안건 데이터를 MongoDB agenda 콜렉션에 저장
 
@@ -21,17 +22,24 @@ class AgendaRepository:
         last_agenda_id = str(len(agenda_dict) + 1)
         agenda_dict[last_agenda_id] = "예비 안건 (회의 중 추가 논의 시)"
 
+        agenda_data = {}  # DB 저장용 (안건명과 논의 상태를 함께 저장)
+        for aid in agenda_dict:
+            title = agenda_dict[aid]
+            agenda_data[aid] = {
+                "title": title,
+                "status": AgendaStatus.PENDING.value
+            }
+
         result = await self.collection.update_one(
             {"_id": room_id},  # 검색 기준
-            {"$set": {"roomId": room_id, "agendas": agenda_dict}},  # 갱신 필드
+            {"$set": {"roomId": room_id, "agendas": agenda_data}},  # 갱신 필드
             upsert=True  # 없으면 새로 insert
         )
 
-        if result.modified_count == 0:
-            if result.upserted_id is not None:
-                print(f"새로 insert된 문서 ID: {result.upserted_id}")
-            else:
-                raise MongoAccessError("회의 안건 저장 실패")
+        if result.modified_count == 0 and result.upserted_id is None:
+            raise MongoAccessError("회의 안건 저장 실패")
+
+        return agenda_dict  # 반환은 안건명만 포함하는 딕셔너리
 
 
     @catch_and_raise("MongoDB 안건 조회", MongoAccessError)
