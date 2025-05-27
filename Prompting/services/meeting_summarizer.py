@@ -142,7 +142,7 @@ class MeetingSummarizer:
                 summary_content = key_statements_text + conclusion_text
 
             agenda_summary = {
-                "agendaId": step,
+                "agendaId": str(step),
                 "topic": sub_topic,
                 "content": summary_content
             }
