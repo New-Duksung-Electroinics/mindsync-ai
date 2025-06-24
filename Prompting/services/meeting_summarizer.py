@@ -9,6 +9,7 @@ from Prompting.exceptions.errors import GeminiCallError, GeminiParseError, Mongo
 from .context_builders import MeetingHistoryBuilder
 from typing import cast
 from Prompting.common import AgendaStatus
+from Prompting.models import AgendaSummaryModel
 
 
 class MeetingSummarizer:
@@ -110,7 +111,7 @@ class MeetingSummarizer:
         return cast(list[dict], summary_data)
 
     @catch_and_raise("Gemini 요약 응답 파싱", GeminiParseError)
-    def parse_response_to_summary_data(self, response: list[dict]) -> list[dict]:
+    def parse_response_to_summary_data(self, response: list[dict]) -> list[AgendaSummaryModel]:
         """
         Gemini의 응답을 MongoDB 저장 형식에 맞게 변환
 
@@ -118,8 +119,8 @@ class MeetingSummarizer:
             response: Gemini 응답으로부터 파싱된 회의 요약 list[dict]
 
         Returns:
-            안건별 요약이 담긴 list[dict]
-            안건별 요약 dict는 안건 번호(agendaId), 안건명(topic), 요약 텍스트(content)로 구성
+            안건별 요약이 담긴 list[AgendaSummaryModel]
+            AgendaSummaryModel은 안건 번호(agendaId), 안건명(topic), 요약 텍스트(content)로 구성
         """
         summary_list = []
         for data in response:
@@ -141,12 +142,7 @@ class MeetingSummarizer:
 
                 summary_content = key_statements_text + conclusion_text
 
-            agenda_summary = {
-                "agendaId": str(step),
-                "topic": sub_topic,
-                "content": summary_content
-            }
-
+            agenda_summary = AgendaSummaryModel(agendaId=str(step), topic=sub_topic, content=summary_content)
             summary_list.append(agenda_summary)
 
         return summary_list

@@ -1,5 +1,6 @@
 # use case에서 쓰이는 data class 정의 모음
 from dataclasses import dataclass
+from Prompting.models import RoomModel
 
 @dataclass
 class RoomInfo:
@@ -8,11 +9,11 @@ class RoomInfo:
     participants: list[str]  # host 포함
 
     @classmethod
-    def from_dict(cls, data: dict) -> "RoomInfo":
+    def from_model(cls, model: RoomModel) -> "RoomInfo":
         return cls(
-            content=data.get("content", ""),
-            host=data.get("host", ""),
-            participants=data.get("participants", []) + [data.get("host", "")]
+            content=model.content,
+            host=model.host_email,
+            participants=model.participants + [model.host_email]
         )
 
 @dataclass

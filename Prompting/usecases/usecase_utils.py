@@ -14,8 +14,8 @@ async def load_meeting_room_info(room_id: str, room_repo: RoomRepository) -> Roo
     Returns:
         채팅방 정보(주최자, 참여자, 회의 주제 설명 포함)
     """
-    room_data = await room_repo.get_room_info(room_id)
-    return RoomInfo.from_dict(room_data)
+    room_model = await room_repo.get_room_info(room_id)
+    return RoomInfo.from_model(room_model)
 
 
 async def load_participants_info(email_list: list[str], user_repo: UserRepository) -> list[UserInfo]:
