@@ -29,5 +29,5 @@ async def load_participants_info(email_list: list[str], user_repo: UserRepositor
     Returns:
         회의 참여자의 세부 정보 목록(이름, 이메일, mbti 포함)
     """
-    user_info_dicts = await user_repo.get_user_list_by_emails(email_list)
-    return [UserInfo.from_dict(info) for info in user_info_dicts]
+    user_data = await user_repo.get_user_list_by_emails(email_list)
+    return [UserInfo.from_model(u) for u in user_data]
