@@ -1,6 +1,6 @@
 # use case에서 쓰이는 data class 정의 모음
 from dataclasses import dataclass
-from Prompting.models import RoomModel
+from Prompting.models import RoomModel, ChatModel
 
 @dataclass
 class RoomInfo:
@@ -37,11 +37,11 @@ class ChatLog:
     agenda_id: str
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ChatLog":
+    def from_model(cls, model: ChatModel) -> "ChatLog":
         return cls(
-            sender=data.get("email", ""),
-            message=data.get("message", ""),
-            agenda_id=data.get("agenda_id", "")
+            sender=model.email,
+            message=model.message,
+            agenda_id=model.agenda_id,
         )
 
 @dataclass

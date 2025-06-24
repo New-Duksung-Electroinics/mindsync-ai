@@ -44,7 +44,7 @@ async def load_chat_context_and_update_agenda_status(
         # 직전 안건이 생략되지 않고 논의 완료로 처리되었으면, 직전 채팅 내역을 맥락으로 참조.
         if not request.is_previous_skipped:
             chat_data = await chat_repo.get_chat_logs_by_agenda_id(request.roomId, prev_agenda_id)
-            chats = [ChatLog.from_dict(c) for c in chat_data]
+            chats = [ChatLog.from_model(c) for c in chat_data]
 
     # 회의 참여자 정보(이메일, 이름, mbti) 불러오기
     room = await load_meeting_room_info(request.roomId, room_repo)

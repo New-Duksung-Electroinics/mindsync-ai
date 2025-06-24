@@ -31,7 +31,7 @@ async def load_summary_context_and_update_agenda_status(
     # 해당 회의의 안건 데이터와 전체 채팅 내역 읽어오기
     agenda_data = await agenda_repo.get_agenda_by_room(request.roomId)
     chat_data = await chat_repo.get_chat_logs_by_room(request.roomId)
-    chats = [ChatLog.from_dict(c) for c in chat_data]
+    chats = [ChatLog.from_model(c) for c in chat_data]
 
     # 마지막 안건의 상태 업데이트
     last_agenda_id = str(len(agenda_data["agendas"]))
