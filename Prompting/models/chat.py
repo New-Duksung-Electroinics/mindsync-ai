@@ -10,3 +10,6 @@ class ChatModel(BaseModel):
     message: str
     agenda_id: str
 
+    class Config:
+        extra = "ignore"
+

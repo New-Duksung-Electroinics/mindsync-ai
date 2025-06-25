@@ -18,3 +18,6 @@ class RoomModel(BaseModel):
     # mbti: str
     # summary: list[AgendaSummaryModel]
 
+    class Config:
+        extra = "ignore"
+

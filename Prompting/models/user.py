@@ -6,3 +6,5 @@ class UserModel(BaseModel):
     username: str
     usermbti: str
 
+    class Config:
+        extra = "ignore"
