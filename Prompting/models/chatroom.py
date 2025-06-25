@@ -18,6 +18,10 @@ class RoomModel(BaseModel):
     # mbti: str
     # summary: list[AgendaSummaryModel]
 
+    @property
+    def full_participants(self) -> list[str]:
+        return list(dict.fromkeys(self.participants + [self.host_email]))  # host까지 포함한 전체 참가자 이메일 리스트
+
     class Config:
         extra = "ignore"
 

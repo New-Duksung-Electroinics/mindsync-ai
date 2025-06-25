@@ -1,20 +1,7 @@
 # use case에서 쓰이는 data class 정의 모음
 from dataclasses import dataclass
-from Prompting.models import RoomModel, ChatModel, UserModel, AgendaItemModel
+from Prompting.models import ChatModel, UserModel, AgendaItemModel
 
-@dataclass
-class RoomInfo:
-    content: str
-    host: str
-    participants: list[str]  # host 포함
-
-    @classmethod
-    def from_model(cls, model: RoomModel) -> "RoomInfo":
-        return cls(
-            content=model.content,
-            host=model.host_email,
-            participants=model.participants + [model.host_email]
-        )
 
 @dataclass
 class UserInfo:

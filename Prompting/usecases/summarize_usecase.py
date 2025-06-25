@@ -1,6 +1,6 @@
 # 요약 생성 요청 시 활용되는 하위 Use Case 모음
 from Prompting.repository import ChatRepository, RoomRepository, UserRepository, AgendaRepository
-from Prompting.usecases.usecase_utils import load_meeting_room_info, load_participants_info
+from Prompting.usecases.usecase_utils import load_participants_info
 from Prompting.usecases.meeting_context import MeetingContext, ChatLog
 from Prompting.exceptions import catch_and_raise, MongoAccessError
 from Prompting.schemas import SummaryRequest
@@ -38,13 +38,13 @@ async def load_summary_context_and_update_agenda_status(
     await agenda_repo.update_status(request.roomId, last_agenda_id, request.is_last_agenda_skipped)
 
     # 회의 참여자 정보(이메일, 이름, mbti) 불러오기
-    room = await load_meeting_room_info(request.roomId, room_repo)
-    participants = await load_participants_info(room.participants, user_repo)
+    room_model = await room_repo.get_room_info(request.roomId)
+    participants = await load_participants_info(room_model.full_participants, user_repo)
 
     return MeetingContext(
-        topic=room.content,
+        topic=room_model.content,
         agendas=agendas,
-        host=room.host,
+        host=room_model.host_email,
         participants=participants,
         chats=chats
     )
