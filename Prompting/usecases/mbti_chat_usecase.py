@@ -31,15 +31,15 @@ async def load_chat_context_and_update_agenda_status(
     """
 
     # 해당 회의의 안건 데이터 읽어와 요청에 포함된 안건 ID가 유효한지 검사
-    agenda_data = await agenda_repo.get_agenda_by_room(request.roomId)
-    if request.agendaId not in agenda_data.get('agendas').keys():
+    agendas = await agenda_repo.get_agenda_by_room(request.roomId)
+    if request.agendaId not in agendas.keys():
         raise RequestValidationError([{"loc": ["agendaId"], "msg": "유효하지 않은 안건 번호", "type": "value_error"}])
 
     chats = []
     if request.agendaId != '1':  # 첫 번째 안건이 아닌 경우에만
         # 직전 안건의 상태 업데이트
         prev_agenda_id = str(int(request.agendaId) - 1)
-        agendas = await agenda_repo.update_status(request.roomId, prev_agenda_id, request.is_previous_skipped)
+        await agenda_repo.update_status(request.roomId, prev_agenda_id, request.is_previous_skipped)
 
         # 직전 안건이 생략되지 않고 논의 완료로 처리되었으면, 직전 채팅 내역을 맥락으로 참조.
         if not request.is_previous_skipped:
@@ -52,7 +52,7 @@ async def load_chat_context_and_update_agenda_status(
 
     return MeetingContext(
         topic=room.content,
-        agendas=agenda_data["agendas"],
+        agendas=agendas,
         host=room.host,
         participants=participants,
         chats=chats

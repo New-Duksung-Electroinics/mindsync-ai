@@ -29,13 +29,13 @@ async def load_summary_context_and_update_agenda_status(
     """
 
     # 해당 회의의 안건 데이터와 전체 채팅 내역 읽어오기
-    agenda_data = await agenda_repo.get_agenda_by_room(request.roomId)
+    agendas = await agenda_repo.get_agenda_by_room(request.roomId)
     chat_data = await chat_repo.get_chat_logs_by_room(request.roomId)
     chats = [ChatLog.from_model(c) for c in chat_data]
 
     # 마지막 안건의 상태 업데이트
-    last_agenda_id = str(len(agenda_data["agendas"]))
-    agendas = await agenda_repo.update_status(request.roomId, last_agenda_id, request.is_last_agenda_skipped)
+    last_agenda_id = str(len(agendas))
+    await agenda_repo.update_status(request.roomId, last_agenda_id, request.is_last_agenda_skipped)
 
     # 회의 참여자 정보(이메일, 이름, mbti) 불러오기
     room = await load_meeting_room_info(request.roomId, room_repo)

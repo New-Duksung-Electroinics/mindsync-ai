@@ -96,7 +96,7 @@ class MeetingSummarizer:
 
         for summary in summary_data:
             aid = str(summary["step"])
-            summary["is_skipped"] = agendas[aid]["status"] == AgendaStatus.SKIPPED
+            summary["is_skipped"] = (agendas[aid].status != AgendaStatus.COMPLETE)
             included_ids.add(aid)
 
         # 누락된 안건 추가
@@ -104,7 +104,7 @@ class MeetingSummarizer:
             if aid not in included_ids:
                 summary_data.append({
                     "step": int(aid),
-                    "sub_topic": agenda["title"],
+                    "sub_topic": agenda.title,
                     "is_skipped": True
                 })
 
