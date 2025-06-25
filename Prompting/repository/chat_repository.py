@@ -1,19 +1,22 @@
 from .mongo_client import db, CHAT_COLLECTION
 from Prompting.exceptions.errors import MongoAccessError
 from Prompting.exceptions.decorators import catch_and_raise
+from Prompting.models import ChatModel
+
 
 class ChatRepository:
     def __init__(self):
         self.collection = db[CHAT_COLLECTION]
 
     @catch_and_raise("MongoDB 전체 채팅 조회", MongoAccessError)
-    async def get_chat_logs_by_room(self, room_id: str) -> list[dict]:
+    async def get_chat_logs_by_room(self, room_id: str) -> list[ChatModel]:
         """채팅방 ID 기준으로 해당 방의 채팅 기록을 시간 순서대로 조회 (최대 1000개까지)"""
         cursor = self.collection.find({"roomId": room_id}).sort("timestamp", 1)
-        return await cursor.to_list(length=1000)
+        docs = await cursor.to_list(length=1000)
+        return [ChatModel.model_validate(doc) for doc in docs]
 
     @catch_and_raise("MongoDB 지정 안건 채팅 조회", MongoAccessError)
-    async def get_chat_logs_by_agenda_id(self, room_id: str, agenda_id: str) -> list[dict]:
+    async def get_chat_logs_by_agenda_id(self, room_id: str, agenda_id: str) -> list[ChatModel]:
         """
         특정 안건에 대한 채팅 기록을 시간 순으로 조회
 
@@ -31,4 +34,5 @@ class ChatRepository:
             "agenda_id": agenda_id
         }).sort("timestamp", 1)
 
-        return await cursor.to_list(length=1000)
+        docs = await cursor.to_list(length=1000)
+        return [ChatModel.model_validate(doc) for doc in docs]

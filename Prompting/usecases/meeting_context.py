@@ -1,19 +1,7 @@
 # use case에서 쓰이는 data class 정의 모음
 from dataclasses import dataclass
+from Prompting.models import ChatModel, UserModel, AgendaItemModel
 
-@dataclass
-class RoomInfo:
-    content: str
-    host: str
-    participants: list[str]  # host 포함
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "RoomInfo":
-        return cls(
-            content=data.get("content", ""),
-            host=data.get("host", ""),
-            participants=data.get("participants", []) + [data.get("host", "")]
-        )
 
 @dataclass
 class UserInfo:
@@ -22,11 +10,11 @@ class UserInfo:
     mbti: str
 
     @classmethod
-    def from_dict(cls, data: dict) -> "UserInfo":
+    def from_model(cls, model: UserModel) -> "UserInfo":
         return cls(
-            email=data.get("email", ""),
-            name=data.get("username", ""),
-            mbti=data.get("usermbti", "")
+            email=model.email,
+            name=model.username,
+            mbti=model.usermbti
         )
 
 @dataclass
@@ -36,17 +24,17 @@ class ChatLog:
     agenda_id: str
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ChatLog":
+    def from_model(cls, model: ChatModel) -> "ChatLog":
         return cls(
-            sender=data.get("email", ""),
-            message=data.get("message", ""),
-            agenda_id=data.get("agenda_id", "")
+            sender=model.email,
+            message=model.message,
+            agenda_id=model.agenda_id,
         )
 
 @dataclass
 class MeetingContext:
     topic: str
-    agendas: dict
+    agendas: dict[str, AgendaItemModel]  # agenda_id -> AgendaItemModel
     host: str
     participants: list[UserInfo]
     chats: list[ChatLog]

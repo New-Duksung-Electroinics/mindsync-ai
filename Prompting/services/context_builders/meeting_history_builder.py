@@ -16,7 +16,7 @@ class MeetingHistoryBuilder:
          - 토큰 수 제한에 맞춰 텍스트를 분할
         """
         self.topic: str = context.topic  # 회의 주제
-        self.agendas: dict[str, str] = { aid: context.agendas[aid]["title"] for aid in context.agendas }  # 회의 안건들(번호-주제 쌍)
+        self.agendas: dict[str, str] = {aid: context.agendas[aid].title for aid in context.agendas}  # 회의 안건들(번호-주제 쌍)
         self.host: str = context.host  # 회의 개최자(이메일)
         self.participants: list[UserInfo] = context.participants  # 회의 참여자 리스트
         self.chats: list[ChatLog] = context.chats  # 채팅 기록 리스트
