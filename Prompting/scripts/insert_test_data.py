@@ -16,41 +16,36 @@ db = client[MONGO_DB_NAME]
 def already_inserted():
     return db[ROOM_COLLECTION].find_one({"_id": TEST_ROOM_ID}) is not None
 
-def insert_chatroom(title, content, host, participants, mbti=BOT_MBTI):
+def insert_chatroom(title, content, host, participants):
     chatroom = {
         "_id": TEST_ROOM_ID,
         "roomId": TEST_ROOM_ID,
-        "host_email": host,
         "title": title,
-        "content": content,
+        "host": host,
         "participants": participants,
-        "mbti": mbti,
+        "content": content,
         "meta": {"version": "v1"}   # 테스트용 데이터 구분을 위한 메타 정보
     }
     db[ROOM_COLLECTION].insert_one(chatroom)
     return TEST_ROOM_ID      # 문서 id 반환
 
-def insert_chat(timestamp, roomId, sender_email, sender_name, msg, agendaId):
-    chat = {
-        "roomId": roomId,
-        "timestamp": timestamp,
-        "email": sender_email,
-        "name": sender_name,
-        "message": msg,
-        "agenda_id": agendaId,
+def insert_room_messages(roomId, messages):
+    room_messages = {
+        "_id": roomId,
+        "messages": messages,
         "meta": {"version": "v1"}
     }
-    db[CHAT_COLLECTION].insert_one(chat)
+    db[CHAT_COLLECTION].insert_one(room_messages)
 
 def insert_user(email, name, mbti="ISTJ", password="1234qwer!"):
-    chat = {
+    user = {
         "email": email,
-        "password": password,
         "username": name,
         "usermbti": mbti,
+        "password": password,
         "meta": {"version": "v1"}
     }
-    db[USER_COLLECTION].insert_one(chat)
+    db[USER_COLLECTION].insert_one(user)
 
 def insert_agenda(roomId, agendas_dict):
     last_agenda_id = str(len(agendas_dict) + 1)
@@ -111,11 +106,13 @@ def insert_sample_meeting_data(json_file_path, ai_mbti):
 
     contents = data.get('contents', [])  # 안건별 발언 내용
     agendas = {}
+    messages = {}
     chat_idx = 0
     for content in contents:
         step = content.get('step', '0')  # 안건 번호
         sub_topic = content.get('sub_topic', '')  # 안건 제목
         agendas[step] = sub_topic
+        messages[step] = []
 
         chat_list = content.get('utterance', [])  # 발언 목록
         for c in chat_list:
@@ -125,20 +122,24 @@ def insert_sample_meeting_data(json_file_path, ai_mbti):
 
             # 임의 타임 스탬프 찍기(5초 간격)
             now = datetime.now()
-            delayed_time = now + timedelta(seconds=5*chat_idx)
-            timestamp =delayed_time.strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = now + timedelta(seconds=5*chat_idx)
 
             # msgId = f"{roomId}-{str(chat_idx).zfill(10)}",  # 일단 임의로 부여
-            insert_chat(
-                timestamp=timestamp,
-                roomId=roomId,
-                sender_email=email,
-                sender_name=name,
-                msg=msg,
-                agendaId=step
-            )
+            chat = {
+                "name": name,
+                "email": email,
+                "message": msg,
+                "agendaId": step,
+                "timestamp": timestamp
+            }
+            messages[step].append(chat)
             chat_idx += 1
+
     insert_agenda(roomId=roomId, agendas_dict=agendas)
+    insert_room_messages(
+        roomId=roomId,
+        messages=messages
+    )
 
 
 if not already_inserted():
