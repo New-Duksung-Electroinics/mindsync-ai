@@ -35,7 +35,7 @@ async def load_chat_context_and_update_agenda_status(
     if request.agendaId not in agendas.keys():
         raise RequestValidationError([{"loc": ["agendaId"], "msg": "유효하지 않은 안건 번호", "type": "value_error"}])
 
-    chats = []
+    chats = {}
     if request.agendaId != '1':  # 첫 번째 안건이 아닌 경우에만
         # 직전 안건의 상태 업데이트
         prev_agenda_id = str(int(request.agendaId) - 1)
@@ -43,8 +43,8 @@ async def load_chat_context_and_update_agenda_status(
 
         # 직전 안건이 생략되지 않고 논의 완료로 처리되었으면, 직전 채팅 내역을 맥락으로 참조.
         if not request.is_previous_skipped:
-            chat_data = await chat_repo.get_chat_logs_by_agenda_id(request.roomId, prev_agenda_id)
-            chats = [ChatLog.from_model(c) for c in chat_data]
+            agenda_chat_map = await chat_repo.get_chat_logs_by_agenda_id(request.roomId, prev_agenda_id)
+            chats = {aid: [ChatLog.from_model(c) for c in msgs] for aid, msgs in agenda_chat_map.items()}
 
     # 회의 참여자 정보(이메일, 이름, mbti) 불러오기
     room_model = await room_repo.get_room_info(request.roomId)
