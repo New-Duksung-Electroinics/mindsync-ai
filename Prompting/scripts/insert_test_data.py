@@ -20,7 +20,7 @@ def insert_chatroom(title, content, host, participants, mbti=BOT_MBTI):
     chatroom = {
         "_id": TEST_ROOM_ID,
         "roomId": TEST_ROOM_ID,
-        "host_email": host,
+        "host": host,
         "title": title,
         "content": content,
         "participants": participants,
