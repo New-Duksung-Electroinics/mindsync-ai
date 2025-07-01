@@ -39,12 +39,12 @@ async def load_summary_context_and_update_agenda_status(
 
     # 회의 참여자 정보(이메일, 이름, mbti) 불러오기
     room_model = await room_repo.get_room_info(request.roomId)
-    participants = await load_participants_info(room_model.full_participants, user_repo)
+    participants = await load_participants_info(room_model.participants, user_repo)
 
     return MeetingContext(
         topic=room_model.content,
         agendas=agendas,
-        host=room_model.host_email,
+        host=room_model.host,
         participants=participants,
         chats=chats
     )
