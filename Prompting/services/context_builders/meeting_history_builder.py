@@ -19,7 +19,7 @@ class MeetingHistoryBuilder:
         self.agendas: dict[str, str] = {aid: context.agendas[aid].title for aid in context.agendas}  # 회의 안건들(번호-주제 쌍)
         self.host: str = context.host  # 회의 개최자(이메일)
         self.participants: list[UserInfo] = context.participants  # 회의 참여자 리스트
-        self.chats: list[ChatLog] = context.chats  # 채팅 기록 리스트
+        self.chats: dict[str, list[ChatLog]] = context.chats  # 채팅 기록 리스트
         self.bot: Optional[UserInfo] = self._get_bot_info()  # AI 봇 정보
         self.email_to_name: dict[str, str] = self._generate_speaker_name_map()  # 발언자 이메일-이름 매핑 생성
 
@@ -92,36 +92,36 @@ class MeetingHistoryBuilder:
                 result.append(name)
         return result
 
-    def _get_context_string_list(self):
+    def _get_context_string_list(self) -> list[str]:
         """
         채팅 기록을 기반으로 안건별 채팅 내역을 표현한 Context 문자열을 구성하고,
-        안건 순서대로 정렬된 문자열 리스트를 반환
+        안건 순서대로 정렬된 문자열 리스트를 반환(agenda_id 정렬 책임은 레포지토리에 있음)
         """
-        context_dict: dict = {}  # 안건별 context(문자열 리스트)를 관리할 딕셔너리
-        for chat in self.chats:
-            agenda_id = chat.agenda_id
+        context_string_list = []
+        for agenda_id, chat_list in self.chats.items():
 
             # 채팅이 속한 안건 ID를 기반으로 안건명 구해 제목 텍스트 설정
-            if agenda_id not in context_dict:
-                sub_topic = self.agendas.get(agenda_id, '')
-                title = f"안건 {agenda_id}. {sub_topic}"
-                context_dict[agenda_id] = [title]
+            sub_topic = self.agendas.get(agenda_id, '')
+            agenda_context_lines = [f"안건 {agenda_id}. {sub_topic}\n"]
 
-            # 채팅 송신자의 역할 알아내기
-            if chat.sender == self.host:  # 진행자 여부 검사
-                speaker_role = "(진행자)"
-            elif chat.sender == self.bot.email:  # ai 봇 여부 검사
-                speaker_role = "(YOU)"
-            else:
-                speaker_role = ""
+            for chat in chat_list:
+                # 채팅 송신자의 역할 알아내기
+                if chat.sender == self.host:  # 진행자 여부 검사
+                    speaker_role = "(진행자)"
+                elif chat.sender == self.bot.email:  # ai 봇 여부 검사
+                    speaker_role = "(YOU)"
+                else:
+                    speaker_role = ""
 
-            speaker_name_str = self.email_to_name[chat.sender] + speaker_role
-            chat_str = f"{speaker_name_str}: {chat.message}"
+                speaker_name_str = self.email_to_name[chat.sender] + speaker_role
+                chat_str = f"{speaker_name_str}: {chat.message}\n"
 
-            context_dict[agenda_id].append(chat_str)  # 해당 안건의 context에 채팅 문자열을 추가
+                agenda_context_lines.append(chat_str)  # 해당 안건의 context에 채팅 문자열을 추가
 
-        # 안건별 context(문자열 리스트)를 하나의 문자열로 조인하여 리스트에 담아 반환
-        return ['\n'.join(context_dict[agenda_id]) for agenda_id in sorted(context_dict.keys())]
+            agenda_context_string = '\n'.join(agenda_context_lines)
+            context_string_list.append(agenda_context_string)
+
+        return context_string_list
 
     def _split_data_within_token_allocation(
             self, topic: str, target: list[str],
