@@ -6,7 +6,7 @@ on:
       - main  # main 브랜치에 push될 때 실행
 
 env:
-  DOCKER_IMAGE_NAME: kanepark/fastapi-prompting
+  DOCKER_IMAGE_NAME: soojin434/fastapi-prompting
   SERVER_HOST: ${{ secrets.SERVER_HOST }}
   SERVER_SSH_USER: ${{ secrets.SERVER_SSH_USER }}
   PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
