@@ -2,8 +2,7 @@ name: Deploy FastAPI to EC2
 
 on:
   push:
-    branches:
-      - main  # main 브랜치에 push될 때 실행
+    branches: [ main ]
 
 env:
   DOCKER_IMAGE_NAME: soojin434/fastapi-prompting
@@ -15,7 +14,6 @@ jobs:
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -23,26 +21,24 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: ${{ secrets.DOCKER_USERNAME }}   # ← 여기에 'soojin434' 저장
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-
       - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting .
+        run: docker build -t ${{ env.DOCKER_IMAGE_NAME }}:latest .
 
-      - name: Check If .env.template Exists in Docker Image
-        run: docker run --rm ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting ls -al /app
+      - name: Check image contents (optional)
+        run: docker run --rm ${{ env.DOCKER_IMAGE_NAME }}:latest ls -al /app
 
       - name: Push Docker Image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/fastapi-prompting
-      
+        run: docker push ${{ env.DOCKER_IMAGE_NAME }}:latest
+
   deploy-to-ubuntu-server:
     name: Deploy to EC2
     needs: build-and-push
     runs-on: ubuntu-latest
-  
     steps:
-      - name: Deploy to Ubuntu Server
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ env.SERVER_HOST }}
@@ -50,53 +46,44 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 234
           script: |
-            LOG_DIR="/home/ubuntu/app-logs"
-            mkdir -p $LOG_DIR
-            touch $LOG_DIR/app.log
-  
-            # sudo 명령어에 비밀번호 자동 입력
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker container prune -f
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker image prune -af
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker volume prune -f
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker system prune -af --volumes
-            
-            # 기존 컨테이너 종료 (종료를 기다림)
-            CONTAINER_ID=$(sudo docker ps -q --filter "publish=20")
+            set -e
 
-            if [ ! -z "$CONTAINER_ID" ]; then
-              echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker stop $CONTAINER_ID
-              echo "컨테이너 종료 대기 중..."
-              
-              # 컨테이너 종료 상태를 기다림
-              while true; do
-                # 컨테이너 상태 확인
-                CONTAINER_STATUS=$(sudo docker inspect --format '{{.State.Status}}' $CONTAINER_ID)
-                
-                # 종료된 상태이면 루프 종료
-                if [ "$CONTAINER_STATUS" == "exited" ]; then
-                  echo "컨테이너 종료 완료"
-                  break
-                fi
-                
-                # 1초 대기 후 다시 확인
-                sleep 1
-              done
+            APP_NAME=mindsync-ai-container
+            IMAGE=${{ env.DOCKER_IMAGE_NAME }}:latest
+            LOG_DIR="$HOME/app-logs/fastapi"
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S mkdir -p "$LOG_DIR"
+
+            # 가벼운 정리
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker container prune -f || true
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker image prune -f || true
+
+            # 공용 네트워크(appnet) 준비 및 mongodb 연결 (있으면 무시)
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker network create appnet || true
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker network connect appnet mongodb || true
+
+            # 기존 컨테이너 제거
+            if sudo docker ps -a --format '{{.Names}}' | grep -q "^${APP_NAME}$"; then
+              echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker rm -f ${APP_NAME} || true
             fi
 
-            # Docker 이미지 업데이트 및 컨테이너 실행
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker pull ${{ env.DOCKER_IMAGE_NAME }}:latest
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run --name mindsync-ai-container -d -p 66:8000 \
+            # 최신 이미지 pull
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker pull ${IMAGE}
+
+            # 재실행 (외부 8082 → 내부 8000)
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S docker run -d \
+              --name ${APP_NAME} \
+              --network appnet \
+              -p 8082:8000 \
               -e TZ=Asia/Seoul \
-              -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
-              -e MONGO_URI=${{ secrets.MONGO_URI }} \
-              -v $LOG_DIR/app.log:/app/logs \
-              ${{ env.DOCKER_IMAGE_NAME }}:latest
+              -e GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}' \
+              -e MONGO_URI='${{ secrets.MONGO_URI }}' \
+              -v "$LOG_DIR:/app/logs" \
+              ${IMAGE}
 
-            # 배포 후 컨테이너가 잘 돌아가는지 확인
-            sleep 3  # 컨테이너가 완전히 실행될 때까지 대기
-            CONTAINER_ID=$(sudo docker ps -q --filter "name=mindsync-ai-container")
-            if [ ! -z "$CONTAINER_ID" ]; then
-              echo "CONTAINER is running Successfully"
-            else
-              echo "NO CONTAINER is running"
-            fi
+            # 상태 확인
+            sleep 5
+            sudo docker ps --filter "name=${APP_NAME}"
+            # 간단 헬스 체크
+            # curl -sf http://localhost:8082/health || true
+
+            echo "✅ FastAPI deployed on :8082"
