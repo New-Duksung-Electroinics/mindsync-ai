@@ -30,7 +30,7 @@ app = FastAPI(docs_url=None, redoc_url=None)  # FastAPI 애플리케이션 생�
 
 # 허용할 origin 지정
 origins = [
-    "http://localhost:3000",  # (개발용) 프론트엔드 주소 -> 배포 시 도메인 주소로 변경
+    "http://localhost:5173",  # (개발용) 프론트엔드 주소 -> 배포 시 도메인 주소로 변경
 ]
 
 # ✅ CORS 미들웨어 등록
